@@ -465,6 +465,9 @@ class PlotSaver():
             # hide upper and right axes
             axis.spines["right"].set_color("none")
             axis.spines["top"].set_color("none")
+            # add arrow tips to left and bottom axes
+            axis.plot(1, 0, ">", color="black", transform=axis.get_yaxis_transform(), clip_on=False)
+            axis.plot(0, 1, "^", color="black", transform=axis.get_xaxis_transform(), clip_on=False)
         # set legend
         if legend:
             if isinstance(legend, dict):

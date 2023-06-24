@@ -402,9 +402,12 @@ class PlotSaver():
 
         Args:
             axis (Axes): Instance of matplotlib Axes.
-            title (str, optional): Title of Axes. Defaults to None.
-            xlabel (str, optional): Label for x-axis of Axes. Defaults to None.
-            ylabel (str, optional): Label for y-axis of Axes. Defaults to None.
+            title (str or dict, optional): Title of Axes or dict with arguments
+                for `set_title`. Defaults to None.
+            xlabel (str or dict, optional): Label for x-axis of Axes or dict
+                with arguments for `set_xlabel`. Defaults to None.
+            ylabel (str or dict, optional): Label for y-axis of Axes or dict
+                with arguments for `set_ylabel`. Defaults to None.
             xlim (tuple, optional): Left and right xlims. Defaults to None.
             ylim (tuple, optional): Bottom and top ylims. Defaults to None.
             xmargin (float, optional): Relative margin to the left and right.
@@ -423,9 +426,15 @@ class PlotSaver():
                 position. Defaults to False.
         """        
         # set text
-        if title is not None:  axis.set_title(title)
-        if xlabel is not None: axis.set_xlabel(xlabel)
-        if ylabel is not None: axis.set_ylabel(ylabel)
+        if title is not None:
+            if isinstance(title, str):    axis.set_title(title)
+            elif isinstance(title, dict): axis.set_title(**title)
+        if xlabel is not None:
+            if isinstance(xlabel, str):    axis.set_xlabel(xlabel)
+            elif isinstance(xlabel, dict): axis.set_xlabel(**xlabel)
+        if ylabel is not None:
+            if isinstance(ylabel, str):    axis.set_ylabel(ylabel)
+            elif isinstance(ylabel, dict): axis.set_ylabel(**ylabel)
         # set ticks (before limits)
         if xticks is not None:
             if isinstance(xticks, list):

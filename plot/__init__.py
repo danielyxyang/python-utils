@@ -237,6 +237,7 @@ class PlotSaver():
         # parameters for figure size
         figsize=None, relsize=None, ratio=None,
         consistent_size=True,
+        tight_layout=True,
         # parameters for displaying figures
         show=True, ncols=4,
         # parameters for saving figures
@@ -257,6 +258,8 @@ class PlotSaver():
                 Defaults to None.
             consistent_size (bool, optional): Flag whether to consistently size
                 the Axes by unifying the side padding. Defaults to True.
+            tight_layout (bool, optional): Flag whether to change layout engine
+                to tight_layout. Defaults to True.
             show (bool, optional): Flag whether to display the plot. Defaults to
                 True.
             ncols (int, optional): Number of columns for displaying the list of
@@ -293,7 +296,8 @@ class PlotSaver():
             PlotSaver.set_style(fig.gca(), **kwargs)
             # set sizing
             fig.set_size_inches(figsize)
-            fig.tight_layout(pad=0.25)
+            if tight_layout:
+                fig.tight_layout(pad=0.25)
         
         # ensure consistent sizing (e.g. for side-by-side plots)
         # https://stackoverflow.com/a/52052892
@@ -402,9 +406,12 @@ class PlotSaver():
 
         Args:
             axis (Axes): Instance of matplotlib Axes.
-            title (str, optional): Title of Axes. Defaults to None.
-            xlabel (str, optional): Label for x-axis of Axes. Defaults to None.
-            ylabel (str, optional): Label for y-axis of Axes. Defaults to None.
+            title (str or dict, optional): Title of Axes or dict with arguments
+                for `set_title`. Defaults to None.
+            xlabel (str or dict, optional): Label for x-axis of Axes or dict
+                with arguments for `set_xlabel`. Defaults to None.
+            ylabel (str or dict, optional): Label for y-axis of Axes or dict
+                with arguments for `set_ylabel`. Defaults to None.
             xlim (tuple, optional): Left and right xlims. Defaults to None.
             ylim (tuple, optional): Bottom and top ylims. Defaults to None.
             xmargin (float, optional): Relative margin to the left and right.
@@ -423,9 +430,15 @@ class PlotSaver():
                 position. Defaults to False.
         """        
         # set text
-        if title is not None:  axis.set_title(title)
-        if xlabel is not None: axis.set_xlabel(xlabel)
-        if ylabel is not None: axis.set_ylabel(ylabel)
+        if title is not None:
+            if isinstance(title, str):    axis.set_title(title)
+            elif isinstance(title, dict): axis.set_title(**title)
+        if xlabel is not None:
+            if isinstance(xlabel, str):    axis.set_xlabel(xlabel)
+            elif isinstance(xlabel, dict): axis.set_xlabel(**xlabel)
+        if ylabel is not None:
+            if isinstance(ylabel, str):    axis.set_ylabel(ylabel)
+            elif isinstance(ylabel, dict): axis.set_ylabel(**ylabel)
         # set ticks (before limits)
         if xticks is not None:
             if isinstance(xticks, list):
@@ -456,6 +469,9 @@ class PlotSaver():
             # hide upper and right axes
             axis.spines["right"].set_color("none")
             axis.spines["top"].set_color("none")
+            # add arrow tips to left and bottom axes
+            axis.plot(1, 0, ">", color="black", transform=axis.get_yaxis_transform(), clip_on=False)
+            axis.plot(0, 1, "^", color="black", transform=axis.get_xaxis_transform(), clip_on=False)
         # set legend
         if legend:
             if isinstance(legend, dict):

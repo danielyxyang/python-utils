@@ -495,6 +495,24 @@ class PlotSaver():
             else:
                 axis.legend()
 
+    # UTILITY FUNCTIONS
+    @staticmethod
+    def print_lim(fig_index, prec=2):
+        """Print the current view limits of the figure."""
+        fig = plt.figure(fig_index)
+        print("({:.{prec}f}, {:.{prec}f})".format(*fig.gca().get_xlim(), prec=prec))
+        print("({:.{prec}f}, {:.{prec}f})".format(*fig.gca().get_ylim(), prec=prec))
+
+    @staticmethod
+    def transfer_lim(fig_index_from, fig_index_to):
+        """Transfer the view limits from one figure to another."""
+        fig_from = plt.figure(fig_index_from)
+        fig_to = plt.figure(fig_index_to)
+        fig_to.gca().set_xlim(fig_from.gca().get_xlim())
+        fig_to.gca().set_ylim(fig_from.gca().get_ylim())
+        fig_to.canvas.draw()
+        fig_to.canvas.flush_events()
+
 
 class GIFSaver():
     def __init__(self, output, filename, dpi=150):

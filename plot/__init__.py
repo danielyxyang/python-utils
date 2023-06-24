@@ -237,6 +237,7 @@ class PlotSaver():
         # parameters for figure size
         figsize=None, relsize=None, ratio=None,
         consistent_size=True,
+        tight_layout=True,
         # parameters for displaying figures
         show=True, ncols=4,
         # parameters for saving figures
@@ -257,6 +258,8 @@ class PlotSaver():
                 Defaults to None.
             consistent_size (bool, optional): Flag whether to consistently size
                 the Axes by unifying the side padding. Defaults to True.
+            tight_layout (bool, optional): Flag whether to change layout engine
+                to tight_layout. Defaults to True.
             show (bool, optional): Flag whether to display the plot. Defaults to
                 True.
             ncols (int, optional): Number of columns for displaying the list of
@@ -293,7 +296,8 @@ class PlotSaver():
             PlotSaver.set_style(fig.gca(), **kwargs)
             # set sizing
             fig.set_size_inches(figsize)
-            fig.tight_layout(pad=0.25)
+            if tight_layout:
+                fig.tight_layout(pad=0.25)
         
         # ensure consistent sizing (e.g. for side-by-side plots)
         # https://stackoverflow.com/a/52052892

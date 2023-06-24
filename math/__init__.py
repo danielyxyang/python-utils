@@ -38,6 +38,11 @@ def is_in_range(val, range, mod=None):
     return np.logical_and(min <= val, val <= max)
 
 
+def case_distinction(cases, **kwargs):
+    choices, conditions = zip(*cases)
+    return np.select(conditions, choices, **kwargs)
+
+
 def intersect_functions(f1, f2, mode="left"):
     """Compute list of indices of the intersection points of two functions.
     

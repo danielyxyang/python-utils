@@ -2,8 +2,3 @@ ipython
 ipywidgets
 matplotlib
 numpy
-tqdm
-
-imageio
-pygifsicle
-tikzplotlib

@@ -6,13 +6,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from mpl_toolkits.axes_grid1 import Divider, Size
-import tikzplotlib as tikz
-import imageio.v3 as imageio
-import pygifsicle
 
 import ipywidgets as widgets
 from IPython.display import display, Image
-from tqdm import tqdm
 
 
 class DynamicPlotter():
@@ -277,8 +273,8 @@ class PlotSaver():
             save (bool, optional): Flag whether to save the plot. Defaults to
                 False.
             format (str, optional): Format of file in which the plot should be
-                saved. Formats include "png", "pdf", "pgf" and "tikz". Defaults
-                to "pdf".
+                saved. Formats include "png", "pdf", "pgf" and "tikz". Saving as
+                "tikz" requires the package `tikzplotlib`. Defaults to "pdf".
             **kwargs: Keyword arguments for `set_style` function.
         """
         if not isinstance(plots, list):
@@ -386,6 +382,7 @@ class PlotSaver():
                         print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
                         print(r"\resizebox{%s}{!}{\input{%s.pgf}}" % (width, name))
                     elif format == "tikz":
+                        import tikzplotlib as tikz
                         filepath += ".tex"
                         tikz.save(filepath, axis_width="r\\tikzwidth", axis_height="\\tikzheight", wrap=False)
                         print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
@@ -504,8 +501,9 @@ class GIFSaver():
     def finish(self, optimize=True, show=True, **kwargs):
         """Finish the GIF by saving and displaying it.
 
-        The GIF is created using Pillow [1]. Optimizing the GIF requires
-        gifsicle [2].
+        To create the GIF, you must install the package `imageio` and `tqdm`.
+        The GIF is then created using Pillow [1]. To optimize the size of the
+        GIF with gifsicle [2], further install the package `pygifsicle`.
 
         [1] https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif
         [2] https://github.com/LucaCappelletti94/pygifsicle
@@ -514,7 +512,9 @@ class GIFSaver():
             optimize (bool, optional): Flag whether to optimize GIF using
                 gifsicle. Defaults to True.
             show (bool, optional): Flag whether to show GIF. Defaults to True.
-        """        
+        """
+        from tqdm import tqdm
+        import imageio.v3 as imageio
         # read gif images
         images = []
         for i in tqdm(range(self.frame_count), desc="Create GIF"):
@@ -523,6 +523,7 @@ class GIFSaver():
         imageio.imwrite(self.filepath_gif(), images, **kwargs)
         # optimize gif
         if optimize:
+            import pygifsicle
             pygifsicle.optimize(self.filepath_gif())
         # display gif
         if show:

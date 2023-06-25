@@ -23,10 +23,12 @@ def setdiff2d(a, b):
     """Compute set difference between two 2D lists."""
     
     # VERSION 1: https://stackoverflow.com/a/11903368
+    a = np.asarray(a)
+    b = np.asarray(b)
     return np.setdiff1d(
-        a.copy().view([("x", a.dtype), ("y", a.dtype)]),
-        b.copy().view([("x", b.dtype), ("y", b.dtype)]),
-    ).view(a.dtype).reshape(-1, 2)
+        a.view([("", a.dtype)] * a.shape[1]),
+        b.view([("", b.dtype)] * b.shape[1]),
+    ).view(a.dtype).reshape(-1, a.shape[1])
     
     # VERSION 2
     # a = set(map(tuple, a))

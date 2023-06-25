@@ -10,23 +10,25 @@ from matplotlib.collections import PatchCollection
 from mpl_toolkits.axes_grid1 import Divider, Size
 
 import ipywidgets as widgets
+from IPython import get_ipython
 from IPython.display import display
 
 
 class PlotSaver():
     r"""Class providing support for saving PDF plots in LaTeX style.
 
-    Example Usage:
+    Examples:
         ```
-        PlotSaver.setup(
-            textwidth=TEXTWIDTH,
-            latex_preamble="\n".join([
+        PlotSaver.setup(interactive=True, is_colab=False)
+        PlotSaver.configure(
+            basewidth=BASEWIDTH,
+            latex=True, latex_preamble="\n".join([
                 r"\usepackage[utf8]{inputenc}",
                 r"\usepackage[T1]{fontenc}",
                 r"\usepackage{amsmath}",
             ]),
+            save_format="pdf",
         )
-        PlotSaver.enable_latex()
 
         fig, axis = PlotSaver.create()
         # PLOTTING CODE
@@ -35,80 +37,189 @@ class PlotSaver():
     """
     interactive = False
     is_colab = False
+    
+    basewidth = 6 # inches
+    save_dir = "."
+    save_format = "png"
+    save_always = False
 
-    output = "."
-    textwidth = 6
-    rc_params = {}
-
-    save_all = False
-    save_all_format = None
+    # mapping for shorter keys usable as keyword arguments
+    _FONTSIZE_KEYS = {
+        "base":   "font.size",
+        "title":  "axes.titlesize",
+        "label":  "axes.labelsize",
+        "xtick":  "xtick.labelsize",
+        "ytick":  "ytick.labelsize",
+        "legend": "legend.fontsize",
+    }
 
     # SETUP FUNCTIONS
 
     @staticmethod
-    def set_interactive(interactive=True, is_colab=False):
-        """Enable or disable interactive plots based on ipympl backend."""
-        PlotSaver.interactive = interactive
-        PlotSaver.is_colab = is_colab
+    def setup(interactive=None, is_colab=None):
+        """Setup environment for PlotSaver.
+
+        Args:
+            interactive (bool, optional): Flag whether the plots should be
+                interactive or not. This only works in an interactive IPython
+                environment. Defaults to None.
+            is_colab (bool, optional): Flag whether the PlotSaver is used in
+                Google Colab or not. This is required for proper functioning of
+                interactive plots in Colab. Defaults to None.
+        """
+        if interactive is not None: PlotSaver.interactive = interactive
+        if is_colab is not None:    PlotSaver.is_colab = is_colab
+        
+        # enable interactive plots in IPython environment
+        ip = get_ipython()
+        if ip is not None:
+            # setup matplotlib backend with IPython magic
+            if PlotSaver.interactive:
+                ip.run_line_magic("matplotlib", "ipympl")
+            else:
+                ip.run_line_magic("matplotlib", "inline")
+
+            # enable interactive plots on Colab
+            # https://matplotlib.org/ipympl/installing.html#google-colab
+            if PlotSaver.interactive and PlotSaver.is_colab:
+                from google.colab import output # pyright: ignore[reportMissingImports]
+                output.enable_custom_widget_manager()
+
+        # prevent figures to be displayed without calling plt.show() or display()
+        plt.ioff()
 
     @staticmethod
-    def setup(output=".", textwidth=None, fontsize=None, latex_preamble="", params={}):
-        if output is not None:
-            PlotSaver.output = output
-        if textwidth is not None:
-            PlotSaver.textwidth = textwidth
-        params_fontsize = {} if fontsize is None else { # default font size: 10pt
-            "font.size": fontsize,
-            "axes.titlesize": fontsize,
-            "axes.labelsize": fontsize,
-            "xtick.labelsize": fontsize,
-            "ytick.labelsize": fontsize,
-            "legend.fontsize": fontsize,
-        }
-        params_latex = {
-            # settings for font
-            "font.family": "serif",
-            # settings for rendering text with latex
-            "text.usetex": True,
-            "text.latex.preamble": latex_preamble, # for legend entries
-            # settings for rendering plot with latex
-            "pgf.texsystem": "pdflatex",
-            "pgf.rcfonts": False, # disable font setup from rc parameters
-            "pgf.preamble": latex_preamble,
-        }
-        PlotSaver.rc_params = {
-            **params_fontsize,
-            **params_latex,
-            **params,
-        }
-    @staticmethod
-    def enable_latex():
-        plt.rcParams.update(PlotSaver.rc_params)
-    @staticmethod
-    def disable_latex():
-        plt.rcParams.update(mpl.rc_params())
-    @staticmethod
-    def use_latex_style():
-        return plt.rc_context(PlotSaver.rc_params)
-    @staticmethod
-    def use_default_style():
-        return plt.rc_context(mpl.rc_params())
+    def configure(
+        basewidth=None,
+        # parameters for rcParams
+        style=None, fontsize=None,
+        latex=None, latex_preamble="",
+        rcparams=None,
+        # parameters for save
+        save_dir=None, save_format=None, save_always=None,
+    ):
+        """Configure default behavior of PlotSaver.
+
+        The default style of the plots can be configured with Matplotlib's
+        rcParams and style sheets. The default rcParams can be found here [1]
+        and a list of different built-in style sheets here [2].
+        
+        Args:
+            basewidth (float, optional): The basewidth of the area in which the
+                plots are used in inches. This can be the width of the output
+                area or the textwidth of your LaTeX document. Defaults to None.
+            style (str, dict, Path or list, optional): The style specification
+                for Matplotlib. Possible specifications are "original",
+                "seaborn" or any of the specifications accepted by
+                `mpl.style.use`. Defaults to None.
+            fontsize (float, str or dict, optional): The default fontsize. A
+                scalar defines the font size for all text and a dict defines the
+                font sizes according to _FONTSIZE_KEYS. A default font size can
+                be specified in the dict under "default". Defaults to None.
+            latex (bool, optional): Flag whether the plots should be rendered
+                with LaTeX or not. Defaults to None.
+            latex_preamble (str, optional): The LaTeX preamble used to render
+                the plots. Defaults to "".
+            rcparams (dict, optional): The dictionary with additional rcParams
+                for Matplotlib. Defaults to None.
+            save_dir (str, optional): The path to the directory in which the
+                plots should be saved. Defaults to None.
+            save_format (str, optional): The format in which the plot should be
+                saved. Formats include "png", "pdf", "pgf" and "tikz". Saving as
+                "tikz" requires the package `tikzplotlib`. Defaults to None.
+            save_always (bool, optional): Flag whether plots should be always
+                saved or not. Defaults to None.
+        
+        References:
+            [1] https://matplotlib.org/stable/tutorials/introductory/customizing.html#the-default-matplotlibrc-file
+            [2] https://matplotlib.org/stable/gallery/style_sheets/style_sheets_reference.html
+        """
+        if basewidth is not None:   PlotSaver.basewidth = basewidth
+        if save_dir is not None:    PlotSaver.save_dir = save_dir
+        if save_format is not None: PlotSaver.save_format = save_format
+        if save_always is not None: PlotSaver.save_always = save_always
+
+        # update rcParams with style
+        if style is not None:
+            if style == "original":
+                # use original rc file loaded by Matplotlib (rcParamsOrig)
+                mpl.rc_file_defaults()
+            elif style == "seaborn":
+                # use original seaborn theme
+                import seaborn as sns # pyright: ignore[reportMissingImports]
+                sns.set_theme()
+            else:
+                # use given style specification
+                mpl.style.use(style)
+
+        # update rcParams with fontsize
+        if fontsize is not None: # default font size: 10pt
+            if np.isscalar(fontsize):
+                plt.rcParams.update({
+                    key: fontsize
+                    for _, key in PlotSaver._FONTSIZE_KEYS.items()
+                })
+            elif isinstance(fontsize, dict):
+                default = fontsize.get("default", None)
+                plt.rcParams.update({
+                    key: fontsize.get(key_short, default)
+                    for key_short, key in PlotSaver._FONTSIZE_KEYS.items()
+                    if key_short in fontsize or default is not None
+                })
+
+        # update rcParams to enable or disable LaTeX rendering
+        if latex is not None:
+            if latex:
+                plt.rcParams.update({
+                    # settings for font
+                    "font.family": "serif",
+                    # settings for rendering text with latex
+                    "text.usetex": True,
+                    "text.latex.preamble": latex_preamble, # for legend entries
+                    # settings for rendering plot with latex
+                    "pgf.texsystem": "pdflatex",
+                    "pgf.rcfonts": False, # disable font setup from rc parameters
+                    "pgf.preamble": latex_preamble,
+                })
+            else:
+                plt.rcParams.update({"text.usetex": False})
+        
+        # update rcParams with custom parameters
+        if rcparams is not None:
+            plt.rcParams.update(rcparams)
 
     @staticmethod
-    def enable_save_all(format):
-        PlotSaver.save_all = True
-        PlotSaver.save_all_format = format
-    @staticmethod
-    def disable_save_all():
-        PlotSaver.save_all = False
-        PlotSaver.save_all_format = None
+    @contextlib.contextmanager
+    def config(**kwargs):
+        """Configure default behavior of PlotSaver with context manager."""
+        try:
+            # save parameters of PlotSaver
+            prev = (
+                PlotSaver.basewidth,
+                PlotSaver.save_dir,
+                PlotSaver.save_format,
+                PlotSaver.save_always,
+            )
+            # save and restore rcParams of Matplotlib
+            with plt.rc_context():
+                # change configuration
+                PlotSaver.configure(**kwargs)
+                yield
+        finally:
+            # restore parameters of PlotSaver
+            (
+                PlotSaver.basewidth,
+                PlotSaver.save_dir,
+                PlotSaver.save_format,
+                PlotSaver.save_always,
+            ) = prev
     
     # PLOTTING FUNCTIONS
 
     @staticmethod
     def display_html_hack():
+        """Display CSS hack to show toolbar of interactive plots in Colab."""
         if PlotSaver.interactive and PlotSaver.is_colab:
-            # hack for displaying toolbar of interactive plots in Colab
             html_hack = widgets.HTML("<style> .jupyter-matplotlib-figure { position: relative; } </style>")
             display(html_hack)
 
@@ -142,7 +253,7 @@ class PlotSaver():
         # parameters for displaying figures
         show=True, ncols=4,
         # parameters for saving figures
-        save=False, format="pdf",
+        save=False, save_format=None,
         # parameters for final adjustments
         **kwargs,
     ):
@@ -167,9 +278,9 @@ class PlotSaver():
                 plots. Defaults to 4.
             save (bool, optional): Flag whether to save the plot. Defaults to
                 False.
-            format (str, optional): Format of file in which the plot should be
+            save_format (str, optional): The format in which the plot should be
                 saved. Formats include "png", "pdf", "pgf" and "tikz". Saving as
-                "tikz" requires the package `tikzplotlib`. Defaults to "pdf".
+                "tikz" requires the package `tikzplotlib`. Defaults to None.
             **kwargs: Keyword arguments for `set_style` function.
         """
         if not isinstance(plots, list):
@@ -184,9 +295,9 @@ class PlotSaver():
             ratio = figsize[1] / figsize[0]
         else:
             if relsize is not None:
-                width = relsize * PlotSaver.textwidth
+                width = relsize * PlotSaver.basewidth
             else:
-                width = PlotSaver.textwidth
+                width = PlotSaver.basewidth
             figsize = (width, width * ratio)
         
         # make final adjustments
@@ -229,7 +340,7 @@ class PlotSaver():
                 fig.set_figheight(fig_height)
 
         # show figures
-        if show or PlotSaver.save_all:
+        if show or PlotSaver.save_always:
             PlotSaver.display_html_hack()
             grid = widgets.GridspecLayout(n_rows=int(np.ceil(len(plots)/ncols)), n_columns=ncols, width="{}in".format((figsize[0]+0.5)*ncols))
             for i, (fig, name) in enumerate(plots):
@@ -237,7 +348,7 @@ class PlotSaver():
                     continue
                 out = widgets.Output(layout=dict(overflow="auto"))
                 with out:
-                    if PlotSaver.interactive and not PlotSaver.save_all:
+                    if PlotSaver.interactive and not PlotSaver.save_always:
                         display(fig.canvas)
                     else:
                         display(fig)
@@ -246,14 +357,15 @@ class PlotSaver():
             display(grid)
 
         # save figures
-        if save or PlotSaver.save_all:
-            format = PlotSaver.save_all_format if PlotSaver.save_all else format
-            if format in ["png", "tikz", "pgf", "pdf"]:
+        if save or PlotSaver.save_always:
+            if save_format is None or PlotSaver.save_always:
+                save_format = PlotSaver.save_format
+            if save_format in ["png", "tikz", "pgf", "pdf"]:
                 for fig, name in plots:
                     if fig is None:
                         continue
                     # setup output path
-                    filepath = os.path.join(PlotSaver.output, format, name)
+                    filepath = os.path.join(PlotSaver.save_dir, save_format, name)
                     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
                     # compute width and height annotations
@@ -262,22 +374,22 @@ class PlotSaver():
                     height = "{:.2f}in".format(height_in) if relsize is None else r"{}\textwidth".format(relsize * height_in/width_in)
                     
                     # save figure to file
-                    if format == "png":
+                    if save_format == "png":
                         filepath += ".png"
                         fig.savefig(filepath, dpi=150)
                         print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
                         print(r"\includegraphics[width=%s]{%s}" % (width, name))
-                    elif format == "pdf":
+                    elif save_format == "pdf":
                         filepath += ".pdf"
                         fig.savefig(filepath, backend="pgf")
                         print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
                         print(r"\includegraphics[width=%s]{%s.pdf}" % (width, name))
-                    elif format == "pgf":
+                    elif save_format == "pgf":
                         filepath += ".pgf"
                         fig.savefig(filepath, backend="pgf")
                         print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
                         print(r"\resizebox{%s}{!}{\input{%s.pgf}}" % (width, name))
-                    elif format == "tikz":
+                    elif save_format == "tikz":
                         import tikzplotlib as tikz
                         filepath += ".tex"
                         tikz.save(filepath, axis_width="r\\tikzwidth", axis_height="\\tikzheight", wrap=False)
@@ -290,7 +402,7 @@ class PlotSaver():
                             r"\end{tikzpicture}",
                         ]) % (width, height, name))
             else:
-                print("WARNING: not supported to save plot in {} format".format(format))
+                print("WARNING: not supported to save plot in {} format".format(save_format))
 
     @staticmethod
     def set_style(
@@ -388,6 +500,7 @@ class PlotSaver():
                 axis.legend()
 
     # UTILITY FUNCTIONS
+    
     @staticmethod
     def print_lim(fig_index, prec=2):
         """Print the current view limits of the figure."""

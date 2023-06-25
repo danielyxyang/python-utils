@@ -21,4 +21,6 @@ def intersect_functions(f1, f2, mode="left"):
         offset = 1
     else:
         print("WARNING: unknown mode for intersecting two functions")
+    f1 = np.asarray(f1)
+    f2 = np.asarray(f2)
     return np.nonzero(np.diff(np.sign(f1 - f2)))[0] + offset

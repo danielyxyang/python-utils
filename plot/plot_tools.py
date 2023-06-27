@@ -5,83 +5,127 @@ import matplotlib.pyplot as plt
 
 
 class MultipleTicks():
-    """Class for formatting multiples of some fractional value in LaTeX as ticks."""
-    # reference: https://stackoverflow.com/a/53586826
+    """Locate and format ticks at multiples of some constant in LaTeX.
+
+    This class complements matplotlib.ticker.MultipleLocator [1] by adding the
+    possibility to format ticks as fractions and/or to represent the constant
+    with a non-numeric symbol.
     
-    def __init__(self, denominator=1, number=np.pi, latex="\pi", number_in_frac=True, fracformat=r"\frac{%s}{%s}"):
-        """_summary_
+    The formatting is inspired from [2].
+
+    Examples:
+        Format ticks as multiples of pi/2:
+        ```
+        ticks = MultipleTicks((np.pi, r"\pi"), 2)
+        axis.xaxis.set_major_locator(ticks.locator())
+        axis.xaxis.set_major_formatter(ticks.formatter())
+        ```
+
+        Format ticks as multiples of 3/2:
+        ```
+        ticks = MultipleTicks(3, 2)
+        axis.xaxis.set_major_locator(ticks.locator())
+        axis.xaxis.set_major_formatter(ticks.formatter())
+        ```
+
+    References:
+        [1] https://matplotlib.org/stable/api/ticker_api.html#matplotlib.ticker.MultipleLocator
+        [2] https://stackoverflow.com/a/53586826
+    """
+    
+    def __init__(self, num, den=1, number_in_frac=False, fracformat=r"\frac{%s}{%s}"):
+        """Public constructor.
 
         Args:
-            denominator (float, optional): Number of ticks between integer
-                multiples of `number`. Defaults to 1.
-            number (float, optional): Numeric value of `latex`. Defaults to
-                np.pi.
-            latex (str, optional): LaTeX string of `number`. Defaults to "\pi".
-            number_in_frac (bool, optional): Flag whether `latex` string should
-                included in numerator of fraction or outside. Defaults to True.
+            num (float or (float, str)): The value of the constant. If the
+                constant should be represented with a non-numeric symbol, a
+                tuple (num_val, num_latex) must be provided.
+            den (float, optional): The denominator value for ticks at multiples
+                of fractions. It must be at least 1. Defaults to 1.
+            number_in_frac (bool, optional): Flag whether the non-numeric symbol
+                should be in or outside of the fraction. This parameter is
+                ignored if num is of type float. Defaults to False.
             fracformat (str, optional): LaTeX format for fraction with first %s
                 replaced by numerator and second %s by denominator. Defaults to
                 r"\frac{%s}{%s}".
-        """        
-        self.denominator = denominator
-        self.number = number
-        self.latex = latex
-        self.number_in_frac = number_in_frac
+        """
+        if isinstance(num, tuple):
+            self.num_val, self.num_latex = num
+        else:
+            self.num_val, self.num_latex = num, None
+        self.den = den
+        self.symbol_in_frac = number_in_frac
         self.fracformat = fracformat
     
-    def scalar_formatter(self, scalar):
+    def _format_scalar(self, scalar):
         """Format scalar value."""
-        if scalar == 0:
-            return "$0$"
-        if scalar == 1:
-            return "${}$".format(self.latex)
-        elif scalar == -1:
-            return "$-{}$".format(self.latex)
+        if self.num_latex is None:
+            # format with numeric symbol
+            scalar = scalar * self.num_val
+            return "${}$".format(scalar)
         else:
-            return "${}{}$".format(scalar, self.latex)
+            # format with non-numeric symbol
+            if scalar == 0:
+                return "$0$"
+            if scalar == 1:
+                return "${}$".format(self.num_latex)
+            elif scalar == -1:
+                return "$-{}$".format(self.num_latex)
+            else:
+                return "${}{}$".format(scalar, self.num_latex)
     
-    def fraction_formatter(self, num, den):
+    def _format_fraction(self, num, den):
         """Format fractional value."""
-        if self.number_in_frac:
-            if num == 1:
-                return "${}$".format(self.fracformat % (self.latex, den))
-            elif num == -1:
-                return "$-{}$".format(self.fracformat % (self.latex, den))
-            elif num < -1:
-                return "$-{}$".format(self.fracformat % (str(-num) + self.latex, den))
-            else:
-                return "${}$".format(self.fracformat % (str(num) + self.latex, den))
+        if self.num_latex is None:
+            # format with numeric symbol
+            num = num * self.num_val
+            if num >= 1:
+                return "${}$".format(self.fracformat % (num, den))
+            else: # num <= -1
+                 return "$-{}$".format(self.fracformat % (-num, den))
         else:
-            if num < 0:
-                return "$-{}{}$".format(self.fracformat % (-num, den), self.latex)
+            # format with non-numeric symbol
+            if self.symbol_in_frac:
+                if num == 1:
+                    return "${}$".format(self.fracformat % (self.num_latex, den))
+                elif num == -1:
+                    return "$-{}$".format(self.fracformat % (self.num_latex, den))
+                elif num > 1:
+                    return "${}$".format(self.fracformat % (str(num) + self.num_latex, den))
+                else: # num < -1
+                    return "$-{}$".format(self.fracformat % (str(-num) + self.num_latex, den))
             else:
-                return "${}{}$".format(self.fracformat % (num, den), self.latex)
+                if num >= 1:
+                    return "${}{}$".format(self.fracformat % (num, den), self.num_latex)
+                else: # num <= -1
+                    return "$-{}{}$".format(self.fracformat % (-num, den), self.num_latex)
     
-    def multiple_formatter(self, x, pos):
+    def _format_multiple(self, x, pos):
         """Format value as scalar or fraction."""
-        if self.denominator <= 1:
-            scalar = int(np.rint(x / self.number))
-            return self.scalar_formatter(scalar)
+        if self.den <= 1:
+            # format scalar
+            scalar = int(np.rint(x / self.num_val))
+            return self._format_scalar(scalar)
         else:
             # cancel gcd
-            den = self.denominator
-            num = int(np.rint(x * den / self.number))
+            den = self.den
+            num = int(np.rint(x * den / self.num_val))
             gcd = np.gcd(num, den)
             num, den = int(num / gcd), int(den / gcd)
             # format fraction
             if den == 1:
-                return self.scalar_formatter(num)
+                return self._format_scalar(num)
             else:
-                return self.fraction_formatter(num, den)
+                return self._format_fraction(num, den)
 
     def locator(self):
-        """Return matplotlib locator."""
-        if self.denominator <= 1:
-            scalar = int(np.rint(1 / self.denominator))
-            return plt.MultipleLocator(scalar * self.number)
+        """Return Matplotlib locator."""
+        if self.den <= 1:
+            scalar = int(np.rint(1 / self.den))
+            return plt.MultipleLocator(scalar * self.num_val)
         else:
-            return plt.MultipleLocator(self.number / self.denominator)
+            return plt.MultipleLocator(self.num_val / self.den)
 
     def formatter(self):
-        """Return matplotlib formatter."""
-        return plt.FuncFormatter(self.multiple_formatter)
+        """Return Matplotlib formatter."""
+        return plt.FuncFormatter(self._format_multiple)

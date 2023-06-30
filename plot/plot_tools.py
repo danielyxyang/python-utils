@@ -1,4 +1,4 @@
-__all__ = ["MultipleTicks"]
+__all__ = ["MultipleTicks", "FilterTicksLocator"]
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -129,3 +129,22 @@ class MultipleTicks():
     def formatter(self):
         """Return Matplotlib formatter."""
         return plt.FuncFormatter(self._format_multiple)
+
+
+class FilterTicksLocator(plt.Locator):
+    """Class for filtering ticks obtained from given locator."""
+
+    def __init__(self, locator, filter):
+        self.locator = locator
+        self.filter = filter
+
+    def __call__(self):
+        locs = np.asarray(self.locator())
+        return locs[~np.isin(locs, self.filter)]
+    
+    def tick_values(self, vmin, vmax):
+        locs = np.asarray(self.locator.tick_values(vmin, vmax))
+        return locs[~np.isin(locs, self.filter)]
+
+    def set_params(self, **kwargs):
+        self.locator.set_params(**kwargs)

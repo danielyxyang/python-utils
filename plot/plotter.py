@@ -13,6 +13,14 @@ import ipywidgets as widgets
 from IPython import get_ipython
 from IPython.display import display
 
+from .plot_tools import FilterTicksLocator
+
+
+def _call_set_f(set_f, arg):
+    """Call function either with first argument or keyword arguments."""
+    if isinstance(arg, dict): set_f(**arg) # arg = keyword arguments
+    else:                     set_f(arg)   # arg = first argument
+
 
 class PlotSaver():
     r"""Class providing support for saving PDF plots in LaTeX style.
@@ -406,20 +414,21 @@ class PlotSaver():
 
     @staticmethod
     def set_style(
-        axis,
+        axes,
         title=None,
         xlabel=None, ylabel=None,
         xlim=None, ylim=None,
         xmargin=None, ymargin=None,
-        xticks=None,
-        yticks=None,
+        xticks=None, yticks=None,
         centeraxes=False,
         legend=False,
+        **kwargs,
     ):
-        """Set all relevant style for an axis with a single function call.
+        """Set multiple properties for axes at once.
 
         Args:
-            axis (Axes): Instance of matplotlib Axes.
+            axes (Axes or list of Axes): The matplotlib Axes on which the
+                properties should be applied.
             title (str or dict, optional): Title of Axes or dict with arguments
                 for `set_title`. Defaults to None.
             xlabel (str or dict, optional): Label for x-axis of Axes or dict
@@ -432,72 +441,85 @@ class PlotSaver():
                 This is ignored if xlim is specified. Defaults to None.
             ymargin (float, optional): Relative margin to the bottom and top.
                 This is ignored if ylim is specified. Defaults to None.
-            xticks (list or dict, optional): List of xticks or dict(ticks=X,
-                labels=X) or dict(locator=X, formatter=X). Defaults to None.
-            yticks (list or dict, optional): List of yticks or dict(ticks=X,
-                labels=X) or dict(locator=X, formatter=X). Defaults to None.
+            xticks (list or dict, optional): List of xticks or dict with
+                arguments for `set_xticks`. If the dict is of the form
+                dict(locator=X, formatter=X), the major locator and formatter
+                are set instead. Defaults to None.
+            yticks (list or dict, optional): List of yticks or dict with
+                arguments for `set_yticks`. If the dict is of the form
+                dict(locator=X, formatter=X), the major locator and formatter
+                are set instead. Defaults to None.
             centeraxes (bool, optional): Flag whether to center the axes.
                 Defaults to False.
             legend (bool or dict, optional): Flag whether to show the legend
-                with default options or dict with kwargs for legend() and
-                additional "order" keyword for specifying order of artists by
-                position. Defaults to False.
-        """        
-        # set text
-        if title is not None:
-            if isinstance(title, str):    axis.set_title(title)
-            elif isinstance(title, dict): axis.set_title(**title)
-        if xlabel is not None:
-            if isinstance(xlabel, str):    axis.set_xlabel(xlabel)
-            elif isinstance(xlabel, dict): axis.set_xlabel(**xlabel)
-        if ylabel is not None:
-            if isinstance(ylabel, str):    axis.set_ylabel(ylabel)
-            elif isinstance(ylabel, dict): axis.set_ylabel(**ylabel)
-        # set ticks (before limits)
-        if xticks is not None:
-            if isinstance(xticks, list):
-                axis.set_xticks(ticks=xticks)
-            elif isinstance(xticks, dict) and "ticks" in xticks and "labels" in xticks:
-                axis.set_xticks(ticks=xticks["ticks"], labels=xticks["labels"])
-            elif isinstance(xticks, dict) and "locator" in xticks and "formatter" in xticks:
-                axis.xaxis.set_major_locator(xticks["locator"])
-                axis.xaxis.set_major_formatter(xticks["formatter"])
-        if yticks is not None:
-            if isinstance(yticks, list):
-                axis.set_yticks(ticks=yticks)
-            elif isinstance(yticks, dict) and "ticks" in yticks and "labels" in yticks:
-                axis.set_yticks(ticks=yticks["ticks"], labels=yticks["labels"])
-            elif isinstance(yticks, dict) and "locator" in yticks and "formatter" in yticks:
-                axis.yaxis.set_major_locator(yticks["locator"])
-                axis.yaxis.set_major_formatter(yticks["formatter"])
-        # set limits
-        if xlim is not None:      axis.set_xlim(xlim)
-        elif xmargin is not None: axis.set_xmargin(xmargin)
-        if ylim is not None:      axis.set_ylim(ylim)
-        elif ymargin is not None: axis.set_ymargin(ymargin)
-        # center axes
-        if centeraxes:
-            # center left and bottom axes
-            axis.spines["left"].set_position("zero")
-            axis.spines["bottom"].set_position("zero")
-            # hide upper and right axes
-            axis.spines["right"].set_color("none")
-            axis.spines["top"].set_color("none")
-            # add arrow tips to left and bottom axes
-            axis.plot(1, 0, ">", color="black", transform=axis.get_yaxis_transform(), clip_on=False)
-            axis.plot(0, 1, "^", color="black", transform=axis.get_xaxis_transform(), clip_on=False)
-        # set legend
-        if legend:
-            if isinstance(legend, dict):
-                if "order" in legend:
-                    order = legend.pop("order")
-                    handles, labels = axis.get_legend_handles_labels()
-                    handles, labels = [handles[i] for i in order], [labels[i] for i in order]
-                    legend["handles"] = handles
-                    legend["labels"] = labels
-                axis.legend(**legend)
-            else:
-                axis.legend()
+                with default options or dict with arguments for `legend` and
+                additional "order" keyword for specifying the order of artists
+                by position. Defaults to False.
+            **kwargs: Keyword arguments passed to `set` [1].
+        
+        References:
+            [1] https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html
+        """
+        for axis in np.asarray(axes).flatten():
+            # set text
+            if title is not None:  _call_set_f(axis.set_title, title)
+            if xlabel is not None: _call_set_f(axis.set_xlabel, xlabel)
+            if ylabel is not None: _call_set_f(axis.set_ylabel, ylabel)
+            # set ticks (before limits)
+            if xticks is not None:
+                if isinstance(xticks, dict) and "locator" in xticks and "formatter" in xticks:
+                    axis.xaxis.set_major_locator(xticks["locator"])
+                    axis.xaxis.set_major_formatter(xticks["formatter"])
+                else:
+                    _call_set_f(axis.set_xticks, xticks)
+            if yticks is not None:
+                if isinstance(yticks, dict) and "locator" in yticks and "formatter" in yticks:
+                    axis.yaxis.set_major_locator(yticks["locator"])
+                    axis.yaxis.set_major_formatter(yticks["formatter"])
+                else:
+                    _call_set_f(axis.set_yticks, yticks)
+            # set limits
+            if xlim is not None:      _call_set_f(axis.set_xlim, xlim)
+            elif xmargin is not None: _call_set_f(axis.set_xmargin, xmargin)
+            if ylim is not None:      _call_set_f(axis.set_ylim, ylim)
+            elif ymargin is not None: _call_set_f(axis.set_ymargin, ymargin)
+            # center axes
+            if centeraxes:
+                # center left and bottom axes
+                axis.spines["left"].set_position("zero")
+                axis.spines["bottom"].set_position("zero")
+                # hide upper and right axes
+                axis.spines["right"].set_visible(False)
+                axis.spines["top"].set_visible(False)
+                # add arrow tips to left and bottom axes
+                axis.plot(1, 0, ">", color="black", transform=axis.get_yaxis_transform(), clip_on=False)
+                axis.plot(0, 1, "^", color="black", transform=axis.get_xaxis_transform(), clip_on=False)
+                # show ticks only on left and bottom axes
+                axis.xaxis.set_ticks_position("bottom")
+                axis.yaxis.set_ticks_position("left")
+                # hide ticks at origin
+                axis.xaxis.set_major_locator(FilterTicksLocator(axis.xaxis.get_major_locator(), [0]))
+                axis.yaxis.set_major_locator(FilterTicksLocator(axis.yaxis.get_major_locator(), [0]))
+                # move xlabel and ylabel
+                axis.xaxis.set_label_text(axis.get_xlabel(), ha="right", va="bottom")
+                axis.xaxis.set_label_coords(1, 0.52)
+                axis.yaxis.set_label_text(axis.get_ylabel(), ha="left", va="top", rotation="horizontal")
+                axis.yaxis.set_label_coords(0.52, 1)
+            # set legend
+            if legend:
+                if isinstance(legend, dict):
+                    if "order" in legend:
+                        # apply permutation to order of legend entries
+                        order = legend.pop("order")
+                        handles, labels = axis.get_legend_handles_labels()
+                        handles, labels = [handles[i] for i in order], [labels[i] for i in order]
+                        legend["handles"] = handles
+                        legend["labels"] = labels
+                    axis.legend(**legend)
+                else:
+                    axis.legend()
+            # set remaining properties
+            axis.set(**kwargs)
 
     # UTILITY FUNCTIONS
     

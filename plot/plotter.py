@@ -22,8 +22,58 @@ def _call_set_f(set_f, arg):
     else:                     set_f(arg)   # arg = first argument
 
 
+def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=False):
+    """Automatically sets figure height tightest possible while adhering to padding.
+    
+    This function retrieves the desired padding from the figure's layout engine
+    and computes a new height based on the height of the figure's tight bounding
+    box. Since the layout engines often themselve rely on the current figure
+    height, the figure height is updated iteratively until it converges.
+    """
+    layout_engine = fig.get_layout_engine()
+    if isinstance(layout_engine, mpl.layout_engine.TightLayoutEngine):
+        # compute padding in inches for tight layout engine
+        # https://github.com/matplotlib/matplotlib/blob/v3.7.1/lib/matplotlib/_tight_layout.py#L50
+        font_size_inch = mpl.font_manager.FontProperties(size=mpl.rcParams["font.size"]).get_size_in_points() / 72
+        h_pad_inch = layout_engine.get()["pad"] * font_size_inch
+    elif isinstance(layout_engine, mpl.layout_engine.ConstrainedLayoutEngine):
+        # compute padding in inches for constrained layout engine
+        h_pad_inch = layout_engine.get()["h_pad"]
+        # switch to compressed constrained layout engine to remove white space (faster convergence)
+        layout_engine._compress = True
+        layout_engine.execute(fig)
+    else:
+        print("WARNING: layout engine {} not supported for automatic computation of figure height.".format(type(layout_engine).__name__))
+    
+    # iteratively update figure height until layout engine converges
+    for _ in range(max_iter):
+        # compute new figure height
+        new_height = fig.get_tightbbox().height + 2 * h_pad_inch
+        if verbose:
+            print("{:.2f} {:6.3f} {:6.1%}".format(new_height, new_height - fig.get_figheight(), new_height / fig.get_figheight() - 1))
+        # check early stopping
+        if (
+            (prec_mode == "abs" and np.abs(new_height - fig.get_figheight()) < prec)
+            or (prec_mode == "rel" and np.abs(new_height / fig.get_figheight() - 1) < prec)
+        ):
+            if verbose:
+                print("Early stopping with", fig.get_figheight())
+            break
+        # update figure height and recalculate layout
+        fig.set_figheight(new_height)
+        layout_engine.execute(fig)
+
+
 class PlotSaver():
-    r"""Class providing support for saving PDF plots in LaTeX style.
+    r"""Extend and simplify the process of creating, showing and saving plots.
+    
+    The main features include:
+        - Configure Matplotlib's style-relevant rcParams more simpler. 
+        - Set properties of axes using a more powerful set-method.
+        - Set figure size based on figure width and axes ratio.
+        - Show interactive plots in notebooks.
+        - Save plots with consistent size.
+        - Save PDF/PGF/TikZ plots rendered with LaTeX.
 
     Examples:
         ```
@@ -38,8 +88,9 @@ class PlotSaver():
             save_format="pdf",
         )
 
-        fig, axis = PlotSaver.create()
+        fig, axes = PlotSaver.create(ncols=2, layout=dict(layout="tight", pad=0.25))
         # PLOTTING CODE
+        PlotSaver.set(axes, title="My Plot", xlabel="x", ylabel="y", centeraxes=True, legend=True)
         PlotSaver.finish((fig, "FILENAME"), relsize=0.5, save=True)
         ```
     """
@@ -225,122 +276,201 @@ class PlotSaver():
     # PLOTTING FUNCTIONS
 
     @staticmethod
-    def display_html_hack():
-        """Display CSS hack to show toolbar of interactive plots in Colab."""
-        if PlotSaver.interactive and PlotSaver.is_colab:
-            html_hack = widgets.HTML("<style> .jupyter-matplotlib-figure { position: relative; } </style>")
-            display(html_hack)
+    def create(layout=dict(layout="tight", pad=0.25), **kwargs):
+        """Create a new plot.
 
-    @staticmethod
-    def create(**kwargs):
-        """Create a new plot and set the style.
-
+        The two main layout engines [1] are "tight" and "constrained". The main
+        differences [2] are:
+            - The tight layout engine adjusts the subplot parameters, such that
+            all titles, labels and ticks fit into the given figure size. If
+            multiple subplots exist, they are squeezed into a tight group
+            centered in space. The parameters `pad`, `w_pad` and `h_pad` must be
+            specified as a fraction of the font size.
+            - The constrained layout engine adjusts the axes size using layout
+            grids, such that all titles, labels and ticks fit into the given 
+            figure size. If multiple subplots exist, they are distributed across
+            space unless `compress` is set to True. The parameters `w_pad` and
+            `h_pad` must be specified in inches (?).
+        Note that some functionalities of PlotSaver only work with the tight
+        layout engine.
+        
         Args:
-            **kwargs: Keyword arguments for `set_style` function.
+            layout (str or dict): The layout engine to be used for the figure.
+                Additional layout engine parameters [1] can be specified by
+                providing a dict with the layout engine name specified under the
+                key "layout". Defaults to dict(layout="tight", pad=0.25).
+            **kwargs: Keyword arguments passed to `subplots` function [3]. This
+                includes `subplot_kw` and `gridspec_kw` to specify keyword
+                arguments passed to `add_subplot` and `GridSpec`.
+        
         Returns:
             Tuple of Figure and Axes instance.
-        """        
-        # create figure
-        fig, axis = plt.subplots(constrained_layout=True)
-        PlotSaver.set_style(axis, **kwargs)
+        
+        References:
+            [1] https://matplotlib.org/stable/api/layout_engine_api.html
+            [2] https://stackoverflow.com/a/72204558
+            [3] https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.subplots.html#matplotlib.pyplot.subplots
+        """
+        if isinstance(layout, dict):
+            layout_name = layout["layout"]
+            layout_kw = {k: v for k, v in layout.items() if k != "layout"}
+        else:
+            layout_name = layout
+            layout_kw = {}
+        
+        # create figure and axes
+        fig, axes = plt.subplots(layout=layout_name, **kwargs)
+        
+        # set layout engine parameters
+        fig.get_layout_engine().set(**layout_kw)
 
         # configure style for interactive plots
         if PlotSaver.interactive:
             fig.canvas.toolbar_position = "top"
             fig.canvas.header_visible = False
-
-        return fig, axis
+        
+        return fig, axes
 
     @staticmethod
     def finish(
         plots,
         # parameters for figure size
-        figsize=None, relsize=None, ratio=None,
-        consistent_size=True,
-        tight_layout=True,
+        figsize=None,
+        figwidth=1, ratio=None,
+        figsize_unit="base",
+        consistent_size=False,
         # parameters for displaying figures
-        show=True, ncols=4,
+        show=True, show_ncols=4,
         # parameters for saving figures
-        save=False, save_format=None,
-        # parameters for final adjustments
-        **kwargs,
+        save=False, save_format=None, save_kw={},
     ):
-        """Set the final style and finish the plot by displaying and saving it.
+        """Finish plots by displaying and/or saving them.
+
+        There are two ways to specify the figure size, prioritized in the
+        following order:
+            1) Provide the size of the figure as tuple (width, height) using the
+            parameter figsize.
+            2) Provide the width of the figure and ratio of the axes using the
+            parameters figwidth and ratio. The height of the figure is then
+            determined automatically.
+        
+        In order to use consistent_size the figure size must be provided
+        according to 2) and all plots must use the tight layout engine. The
+        reason is that consistent_size relies on the fig.subplotpars which are
+        only adjusted by tight layout.
 
         Args:
-            plots (tuple (Figure, str) or list): (figure, filename) or a list of
-                such tuples.
-            figsize (tuple (float, float), optional): (width, height) Width and
-                height in inches. Defaults to None.
-            relsize (float, optional): Width of figure relative to specified
-                textwidth. Defaults to None.
-            ratio (float, optional): Ratio height/width of axes, not of figure.
-                Defaults to None.
+            plots (Figure, tuple (Figure, str), list of Figures, or list of
+                tuples): The plot or list of plots to be displayed and/or saved.
+                If provided as a tuple (figure, name), the figure is displayed
+                and saved under the given name.
+            figsize (tuple (float, float), optional): The tuple (width, height)
+                with width and height given in figsize_unit. Defaults to None.
+            figwidth (float, optional): The width of the figure given in
+                figsize_unit. This parameter is ignored if figsize is given.
+                Defaults to 1.
+            ratio (float, optional): The height/width ratio of the axes, not of
+                the figure. This parameter is ignored if figsize is given.
+                Defaults to None (golden mean ratio).
+            figsize_unit ("base", "inch" or "cm"): The unit in which the width
+                and/or height of the figure are specified. The size can be
+                relative to PlotSaver.basewidth ("base"). Defaults to "base".
             consistent_size (bool, optional): Flag whether to consistently size
-                the Axes by unifying the side padding. Defaults to True.
-            tight_layout (bool, optional): Flag whether to change layout engine
-                to tight_layout. Defaults to True.
-            show (bool, optional): Flag whether to display the plot. Defaults to
-                True.
-            ncols (int, optional): Number of columns for displaying the list of
-                plots. Defaults to 4.
-            save (bool, optional): Flag whether to save the plot. Defaults to
+                the Axes across different figures by unifying their side
+                paddings. Defaults to False.
+            show (bool, optional): Flag whether to display the plots. Defaults
+                to True.
+            show_ncols (int, optional): Number of columns for displaying the
+                list of plots. Defaults to 4.
+            save (bool, optional): Flag whether to save the plots. Defaults to
                 False.
-            save_format (str, optional): The format in which the plot should be
+            save_format (str, optional): The format in which the plots should be
                 saved. Formats include "png", "pdf", "pgf" and "tikz". Saving as
                 "tikz" requires the package `tikzplotlib`. Defaults to None.
-            **kwargs: Keyword arguments for `set_style` function.
+            save_kw (dict): Keyword arguments passed to the corresponding save
+                function. Defaults to {}.
         """
+        # ensure plots is a list of tuples
         if not isinstance(plots, list):
             plots = [plots]
         if len(plots) == 0:
             return
-        # set ratio            
-        if ratio is None:
-            ratio = (np.sqrt(5.0) - 1.0) / 2.0 # golden mean
+        # ensure plots are named
+        for i in range(len(plots)):
+            if plots[i] is not None and not isinstance(plots[i], tuple):
+                plots[i] = (plots[i], "plot{}".format(plots[i].number))
+        # define list of non-empty plots for simpler for-loops (aliasing plots)
+        plots_filtered = [plot for plot in plots if plot is not None]
+
         # set figsize
-        if figsize is not None:
-            ratio = figsize[1] / figsize[0]
+        if figsize_unit == "base":
+            figsize_unit = PlotSaver.basewidth
+        elif figsize_unit == "inch":
+            figsize_unit = 1
+        elif figsize_unit == "cm":
+            figsize_unit = 1 / 2.54
         else:
-            if relsize is not None:
-                width = relsize * PlotSaver.basewidth
-            else:
-                width = PlotSaver.basewidth
-            figsize = (width, width * ratio)
-        
-        # make final adjustments
-        for fig, _ in plots:
-            if fig is None:
-                continue
-            # set style
-            PlotSaver.set_style(fig.gca(), **kwargs)
-            # set sizing
-            fig.set_size_inches(figsize)
-            if tight_layout:
-                fig.tight_layout(pad=0.25)
+            print("WARNING: figsize_unit \"{}\" is unknown.".format(figsize_unit))
+
+        # set figsize specification
+        if figsize is not None:
+            # set figure size based on width and height
+            figsize_spec = dict(
+                spec="width_height",
+                width=figsize[0] * figsize_unit,
+                height=figsize[1] * figsize_unit,
+            )
+            for fig, _ in plots_filtered:
+                fig.set_size_inches(figsize_spec["width"], figsize_spec["height"])
+        elif figwidth is not None:
+            # set figure size based on width and axes ratio
+            figsize_spec = dict(
+                spec="width_ratio",
+                width=figwidth * figsize_unit,
+                ratio=ratio if ratio is not None else (np.sqrt(5.0) - 1.0) / 2.0, # golden mean
+            )
+            for fig, _ in plots_filtered:
+                for axis in fig.axes:
+                    axis.set_box_aspect(figsize_spec["ratio"])
+                fig.set_figwidth(figsize_spec["width"])
+                _set_figheight_auto(fig)
+        else:
+            figsize_spec = dict(spec=None)
         
         # ensure consistent sizing (e.g. for side-by-side plots)
         # https://stackoverflow.com/a/52052892
         if consistent_size:
+            if figsize_spec["spec"] != "width_ratio":
+                print("WARNING: consistent_size only works with specified figure width and ratio.")
+            # compute subplot parameters with tight layout engine
+            for fig, _ in plots_filtered:
+                layout_engine = fig.get_layout_engine()
+                if isinstance(layout_engine, mpl.layout_engine.TightLayoutEngine):
+                    # execute tight layout engine
+                    fig.set_figheight(figsize_spec["width"] * figsize_spec["ratio"]) # TODO this somehow improves the subplotparams?
+                    layout_engine.execute(fig)
+                    # turn off tight layout engine (since incompatible with Divider as axes_locator)
+                    fig.set_layout_engine("none")
+                else:
+                    print("WARNING: consistent_size only works with tight layout engine.")
+            # compute max required padding
             def get_padding(fig):
-                # return required side-space for title, labels, ticks, etc.
+                # return required padding for title, labels, ticks, etc.
                 l = fig.subplotpars.left * fig.get_figwidth()
                 r = (1 - fig.subplotpars.right) * fig.get_figwidth()
                 b = fig.subplotpars.bottom * fig.get_figheight()
                 t = (1 - fig.subplotpars.top) * fig.get_figheight()
                 return np.array([l, r, b, t])
-            # compute max required fixed side-space
-            l_max, r_max, b_max, t_max = np.max([get_padding(fig) for fig, _ in plots if fig is not None], axis=0)
+            l_max, r_max, b_max, t_max = np.max([get_padding(fig) for fig, _ in plots_filtered], axis=0)
             horiz = [Size.Fixed(l_max), Size.Scaled(1), Size.Fixed(r_max)]
-            verti = [Size.Fixed(b_max), Size.Scaled(ratio), Size.Fixed(t_max)]
+            verti = [Size.Fixed(b_max), Size.Scaled(figsize_spec["ratio"]), Size.Fixed(t_max)]
             # compute new height to adapt ratio to ratio of axes instead of figure
-            fig_width = figsize[0]
+            fig_width = figsize_spec["width"]
             axes_width = fig_width - l_max - r_max
-            axes_height = axes_width * ratio
+            axes_height = axes_width * figsize_spec["ratio"]
             fig_height = axes_height + t_max + b_max
-            for fig, _ in plots:
-                if fig is None:
-                    continue
+            # change axes locator to Divider and resize figures
+            for fig, _ in plots_filtered:
                 # place axis in divider
                 divider = Divider(fig, (0, 0, 1, 1), horiz, verti, aspect=True)
                 fig.gca().set_axes_locator(divider.new_locator(nx=1, ny=1))
@@ -349,8 +479,12 @@ class PlotSaver():
 
         # show figures
         if show or PlotSaver.save_always:
-            PlotSaver.display_html_hack()
-            grid = widgets.GridspecLayout(n_rows=int(np.ceil(len(plots)/ncols)), n_columns=ncols, width="{}in".format((figsize[0]+0.5)*ncols))
+            # create grid of figures
+            grid = widgets.GridspecLayout(
+                n_rows=int(np.ceil(len(plots)/show_ncols)),
+                n_columns=show_ncols,
+                width="{}in".format((figsize_spec["width"]+0.5)*show_ncols),
+            )
             for i, (fig, name) in enumerate(plots):
                 if fig is None:
                     continue
@@ -360,8 +494,14 @@ class PlotSaver():
                         display(fig.canvas)
                     else:
                         display(fig)
-                    display(widgets.Label("{:3}: {}".format(fig.number, name), layout=dict(overflow="auto"), style=dict(font_family="monospace", font_size="10pt")))
-                grid[i // ncols, i % ncols] = out
+                    display(widgets.Label(
+                        "{:3}: {}".format(fig.number, name),
+                        layout=dict(overflow="auto"),
+                        style=dict(font_family="monospace", font_size="10pt"),
+                    ))
+                grid[i // show_ncols, i % show_ncols] = out
+            # display grid of figures
+            PlotSaver.display_html_hack()
             display(grid)
 
         # save figures
@@ -369,38 +509,40 @@ class PlotSaver():
             if save_format is None or PlotSaver.save_always:
                 save_format = PlotSaver.save_format
             if save_format in ["png", "tikz", "pgf", "pdf"]:
-                for fig, name in plots:
-                    if fig is None:
-                        continue
+                for fig, name in plots_filtered:
                     # setup output path
                     filepath = os.path.join(PlotSaver.save_dir, save_format, name)
                     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
                     # compute width and height annotations
                     width_in, height_in = fig.get_size_inches()
-                    width = "{:.2f}in".format(width_in) if relsize is None else r"{}\textwidth".format(relsize)
-                    height = "{:.2f}in".format(height_in) if relsize is None else r"{}\textwidth".format(relsize * height_in/width_in)
+                    if figsize_unit == PlotSaver.basewidth:
+                        width_latex = r"{:.2f}\textwidth".format(width_in / PlotSaver.basewidth)
+                        height_latex = r"{:.2f}\textwidth".format(height_in / PlotSaver.basewidth)
+                    else:
+                        width_latex = "{:.2f}in".format(width_in)
+                        height_latex = "{:.2f}in".format(height_in)
                     
                     # save figure to file
                     if save_format == "png":
                         filepath += ".png"
-                        fig.savefig(filepath, dpi=150)
+                        fig.savefig(filepath, **save_kw)
                         print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
-                        print(r"\includegraphics[width=%s]{%s}" % (width, name))
+                        print(r"\includegraphics[width=%s]{%s}" % (width_latex, name))
                     elif save_format == "pdf":
                         filepath += ".pdf"
-                        fig.savefig(filepath, backend="pgf")
+                        fig.savefig(filepath, backend="pgf", **save_kw)
                         print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
-                        print(r"\includegraphics[width=%s]{%s.pdf}" % (width, name))
+                        print(r"\includegraphics[width=%s]{%s.pdf}" % (width_latex, name))
                     elif save_format == "pgf":
                         filepath += ".pgf"
-                        fig.savefig(filepath, backend="pgf")
+                        fig.savefig(filepath, backend="pgf", **save_kw)
                         print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
-                        print(r"\resizebox{%s}{!}{\input{%s.pgf}}" % (width, name))
+                        print(r"\resizebox{%s}{!}{\input{%s.pgf}}" % (width_latex, name))
                     elif save_format == "tikz":
                         import tikzplotlib as tikz
                         filepath += ".tex"
-                        tikz.save(filepath, axis_width="r\\tikzwidth", axis_height="\\tikzheight", wrap=False)
+                        tikz.save(filepath, axis_width=r"\tikzwidth", axis_height=r"\tikzheight", wrap=False, **save_kw)
                         print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
                         print("\n".join([
                             r"\begin{tikzpicture}",
@@ -408,9 +550,9 @@ class PlotSaver():
                             r"    \def\tikzheight{%s}",
                             r"    \input{%s}",
                             r"\end{tikzpicture}",
-                        ]) % (width, height, name))
+                        ]) % (width_latex, height_latex, name))
             else:
-                print("WARNING: not supported to save plot in {} format".format(save_format))
+                print("WARNING: save_format \"{}\" unknown.".format(save_format))
 
     @staticmethod
     def set_style(
@@ -522,7 +664,14 @@ class PlotSaver():
             axis.set(**kwargs)
 
     # UTILITY FUNCTIONS
-    
+
+    @staticmethod
+    def display_html_hack():
+        """Display CSS hack to show toolbar of interactive plots in Colab."""
+        if PlotSaver.interactive and PlotSaver.is_colab:
+            html_hack = widgets.HTML("<style> .jupyter-matplotlib-figure { position: relative; } </style>")
+            display(html_hack)
+
     @staticmethod
     def print_lim(fig_index, prec=2):
         """Print the current view limits of the figure."""

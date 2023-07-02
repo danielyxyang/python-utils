@@ -85,18 +85,28 @@ class Plotter():
         Plotter.setup(interactive=True, is_colab=False)
         Plotter.configure(
             basewidth=BASEWIDTH,
-            latex=True, latex_preamble="\n".join([
+            latex=True,
+            latex_preamble="\n".join([
                 r"\usepackage[utf8]{inputenc}",
                 r"\usepackage[T1]{fontenc}",
-                r"\usepackage{amsmath}",
+                r"\usepackage{lmodern}",      # for 8-bit Latin Modern font
+                r"\usepackage[sc]{mathpazo}", # for Palatino font
+                r"\usepackage{amsmath,amssymb}",
             ]),
+            save_dir=os.path.join(".", "output"),
             save_format="pdf",
         )
 
-        fig, axes = Plotter.create(ncols=2, layout=dict(layout="tight", pad=0.25))
-        # PLOTTING CODE
-        Plotter.set(axes, title="My Plot", xlabel="x", ylabel="y", centeraxes=True, legend=True)
-        Plotter.finish((fig, "FILENAME"), relsize=0.5, save=True)
+        fig, axes = Plotter.create(ncols=2, set=dict(
+            xlabel="x", ylabel="y",
+            centeraxes=True,
+        )
+        Plotter.set(axes[0], title="My First Plot", xlim=(-3, 3), ylim=(2, 4))
+        # CODE FOR PLOT 1
+        Plotter.set(axes[1], title="My Second Plot")
+        # CODE FOR PLOT 2
+        Plotter.set(axes, legend=True)
+        Plotter.finish((fig, "FILENAME"), figwidth=0.5, save=True)
         ```
     """
     interactive = False
@@ -174,7 +184,9 @@ class Plotter():
         Args:
             basewidth (float, optional): The basewidth of the area in which the
                 plots are used in inches. This can be the width of the output
-                area or the textwidth of your LaTeX document. Defaults to None.
+                area or the textwidth of your LaTeX document, which can be
+                obtained with "\the\textwidth" divided by 72.27 [3]. Defaults to
+                None.
             style (str, dict, Path or list, optional): The style specification
                 for Matplotlib. Possible specifications are "original",
                 "seaborn" or any of the specifications accepted by
@@ -200,6 +212,7 @@ class Plotter():
         References:
             [1] https://matplotlib.org/stable/tutorials/introductory/customizing.html#the-default-matplotlibrc-file
             [2] https://matplotlib.org/stable/gallery/style_sheets/style_sheets_reference.html
+            [3] https://www.overleaf.com/learn/latex/Lengths_in_LaTeX
         """
         if basewidth is not None:   Plotter.basewidth = basewidth
         if save_dir is not None:    Plotter.save_dir = save_dir
@@ -485,7 +498,7 @@ class Plotter():
         only adjusted by tight layout.
 
         Args:
-            plots (Figure, tuple (Figure, str), list of Figures, or list of
+            plots (Figure, tuple (Figure, str) or mixed list of Figures and
                 tuples): The plot or list of plots to be displayed and/or saved.
                 If provided as a tuple (figure, name), the figure is displayed
                 and saved under the given name.

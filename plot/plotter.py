@@ -284,7 +284,7 @@ class Plotter():
     # PLOTTING FUNCTIONS
 
     @staticmethod
-    def create(layout=dict(layout="tight", pad=0.25), **kwargs):
+    def create(layout=dict(layout="tight", pad=0.25), set={}, subplot={}, gridspec={}, **kwargs):
         """Create a new plot.
 
         The two main layout engines [1] are "tight" and "constrained". The main
@@ -307,9 +307,12 @@ class Plotter():
                 Additional layout engine parameters [1] can be specified by
                 providing a dict with the layout engine name specified under the
                 key "layout". Defaults to dict(layout="tight", pad=0.25).
-            **kwargs: Keyword arguments passed to `subplots` function [3]. This
-                includes `subplot_kw` and `gridspec_kw` to specify keyword
-                arguments passed to `add_subplot` and `GridSpec`.
+            set (dict): Keyword arguments passed to `set`. Defaults to {}.
+            subplot (dict): Keyword arguments passed to `add_subplot`. Defaults
+                to {}.
+            gridspec (dict): Keyword arguments passed to `GridSpec`. Defaults to
+                {}.
+            **kwargs: Keyword arguments passed to `subplots` function [3].
         
         Returns:
             Tuple of Figure and Axes instance.
@@ -321,16 +324,19 @@ class Plotter():
         """
         if isinstance(layout, dict):
             layout_name = layout["layout"]
-            layout_kw = {k: v for k, v in layout.items() if k != "layout"}
+            layout_params = {k: v for k, v in layout.items() if k != "layout"}
         else:
             layout_name = layout
-            layout_kw = {}
+            layout_params = {}
         
         # create figure and axes
-        fig, axes = plt.subplots(layout=layout_name, **kwargs)
+        fig, axes = plt.subplots(layout=layout_name, subplot_kw=subplot, gridspec_kw=gridspec, **kwargs)
         
         # set layout engine parameters
-        fig.get_layout_engine().set(**layout_kw)
+        fig.get_layout_engine().set(**layout_params)
+
+        # set axes properties
+        Plotter.set(axes, **set)
 
         # configure style for interactive plots
         if Plotter.interactive:
@@ -456,6 +462,8 @@ class Plotter():
         figwidth=1, ratio=None,
         figsize_unit="base",
         consistent_size=False,
+        # parameters for other properties
+        set={},
         # parameters for displaying figures
         show=True, show_ncols=4,
         # parameters for saving figures
@@ -495,6 +503,7 @@ class Plotter():
             consistent_size (bool, optional): Flag whether to consistently size
                 the Axes across different figures by unifying their side
                 paddings. Defaults to False.
+            set (dict): Keyword arguments passed to `set`. Defaults to {}.
             show (bool, optional): Flag whether to display the plots. Defaults
                 to True.
             show_ncols (int, optional): Number of columns for displaying the
@@ -519,7 +528,7 @@ class Plotter():
         # define list of non-empty plots for simpler for-loops (aliasing plots)
         plots_filtered = [plot for plot in plots if plot is not None]
 
-        # set figsize
+        # set figure size unit
         if figsize_unit == "base":
             figsize_unit = Plotter.basewidth
         elif figsize_unit == "inch":
@@ -529,30 +538,36 @@ class Plotter():
         else:
             print("WARNING: figsize_unit \"{}\" is unknown.".format(figsize_unit))
 
-        # set figsize specification
+        # set figure size specification
         if figsize is not None:
-            # set figure size based on width and height
             figsize_spec = dict(
                 spec="width_height",
                 width=figsize[0] * figsize_unit,
                 height=figsize[1] * figsize_unit,
             )
-            for fig, _ in plots_filtered:
-                fig.set_size_inches(figsize_spec["width"], figsize_spec["height"])
         elif figwidth is not None:
-            # set figure size based on width and axes ratio
             figsize_spec = dict(
                 spec="width_ratio",
                 width=figwidth * figsize_unit,
                 ratio=ratio if ratio is not None else (np.sqrt(5.0) - 1.0) / 2.0, # golden mean
             )
-            for fig, _ in plots_filtered:
+        else:
+            figsize_spec = dict(spec=None)
+        
+        # set figure size and axis properties
+        for fig, _ in plots_filtered:
+            # set figure size
+            if figsize_spec["spec"] == "width_height":
+                # set figure size based on width and height
+                fig.set_size_inches(figsize_spec["width"], figsize_spec["height"])
+            elif figsize_spec["spec"] == "width_ratio":
+                # set figure size based on width and axes ratio
                 for axis in fig.axes:
                     axis.set_box_aspect(figsize_spec["ratio"])
                 fig.set_figwidth(figsize_spec["width"])
                 _set_figheight_auto(fig)
-        else:
-            figsize_spec = dict(spec=None)
+            # set properties of axes
+            Plotter.set(fig.axes, **set)
         
         # ensure consistent sizing (e.g. for side-by-side plots)
         # https://stackoverflow.com/a/52052892

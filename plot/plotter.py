@@ -535,9 +535,10 @@ class Plotter():
         if len(plots) == 0:
             return
         # ensure plots are named
-        for i in range(len(plots)):
-            if plots[i] is not None and not isinstance(plots[i], tuple):
-                plots[i] = (plots[i], "plot{}".format(plots[i].number))
+        plots = [
+            plot if plot is None or isinstance(plot, tuple) else (plot, "plot{}".format(plots.number))
+            for plot in plots
+        ]
         # define list of non-empty plots for simpler for-loops (aliasing plots)
         plots_filtered = [plot for plot in plots if plot is not None]
 

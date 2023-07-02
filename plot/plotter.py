@@ -7,7 +7,6 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
-from mpl_toolkits.axes_grid1 import Divider, Size
 
 import ipywidgets as widgets
 from IPython import get_ipython
@@ -20,6 +19,10 @@ def _call_set_f(set_f, arg):
     """Call function either with first argument or keyword arguments."""
     if isinstance(arg, dict): set_f(**arg) # arg = keyword arguments
     else:                     set_f(arg)   # arg = first argument
+
+
+def _warn_incorrect_layout_engine(func, fig):
+    print("WARNING: {} does not support layout engine {}.".format(func.__name__, type(fig.get_layout_engine()).__name__))
 
 
 def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=False):
@@ -43,7 +46,7 @@ def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=Fa
         layout_engine._compress = True
         layout_engine.execute(fig)
     else:
-        print("WARNING: layout engine {} not supported for automatic computation of figure height.".format(type(layout_engine).__name__))
+        _warn_incorrect_layout_engine(_set_figheight_auto, fig)
     
     # initialize figure height to some sufficiently large height
     fig.set_figheight(50)
@@ -68,6 +71,72 @@ def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=Fa
         fig.set_figheight(new_height)
         layout_engine.execute(fig)
 
+
+def _get_padding(fig):
+    """Get the figure's padding in inches.
+    
+    This function relies on the subplot parameters and therefore only works with
+    the tight layout engine.
+    """
+    if isinstance(fig.get_layout_engine(), mpl.layout_engine.ConstrainedLayoutEngine):
+        _warn_incorrect_layout_engine(_set_padding, fig)
+    return np.array([
+        fig.subplotpars.left * fig.get_figwidth(), # left
+        fig.subplotpars.bottom * fig.get_figheight(), # bottom
+        (1 - fig.subplotpars.right) * fig.get_figwidth(), # right
+        (1 - fig.subplotpars.top) * fig.get_figheight(), # top
+    ])
+
+
+def _set_padding(fig, left, bottom, right, top):
+    """Set the figure's padding in inches.
+    
+    This function relies on the subplot parameters and therefore only works with
+    the tight layout engine.
+    """
+    if isinstance(fig.get_layout_engine(), mpl.layout_engine.ConstrainedLayoutEngine):
+        _warn_incorrect_layout_engine(_set_padding, fig)
+    fig.subplots_adjust(
+        left=left / fig.get_figwidth(),
+        bottom=bottom / fig.get_figheight(),
+        right=1 - right / fig.get_figwidth(),
+        top=1 - top / fig.get_figheight(),
+    )
+
+
+def _execute_tight_layout_auto(fig, prec=0.01, max_iter=10, verbose=False):
+    """Iteratively executes tight layout engine until convergence.
+    
+    The tight layout engine seems to rely on the current layout of the figure.
+    Hence, the layout engine is executed iteratively until the adjusted subplot
+    parameters stabilize, which specify the figure's paddings. A related issue
+    is described here [1].
+    
+    References:
+        [1] https://github.com/matplotlib/matplotlib/issues/11809
+    """
+    layout_engine = fig.get_layout_engine()
+    if not isinstance(layout_engine, mpl.layout_engine.TightLayoutEngine):
+        _warn_incorrect_layout_engine(_execute_tight_layout_auto, fig)
+        return
+
+    padding = _get_padding(fig)
+    if verbose:
+        print("{}".format(padding))
+    for _ in range(max_iter):
+        # execute layout engine and compute new padding
+        layout_engine.execute(fig)
+        padding_new = _get_padding(fig)
+        if verbose:
+            print("{} {:6.3f}".format(padding_new, np.max(np.abs(padding - padding_new))))
+        # check early stopping
+        if (np.abs(padding - padding_new) < prec).all():
+            if verbose:
+                print("Early stopping with", padding_new)
+            break
+        # update previous padding
+        padding = padding_new
+    
 
 class Plotter():
     r"""Extend and simplify the process of creating, showing and saving plots.
@@ -583,45 +652,29 @@ class Plotter():
             # set properties of axes
             Plotter.set(fig.axes, **set)
         
-        # ensure consistent sizing (e.g. for side-by-side plots)
-        # https://stackoverflow.com/a/52052892
+        # set consistent sizes (e.g. for side-by-side plots)
         if consistent_size:
             if figsize_spec["spec"] != "width_ratio":
-                print("WARNING: consistent_size only works with specified figure width and ratio.")
-            # compute subplot parameters with tight layout engine
+                print("WARNING: consistent_size only works with specified figure width and axis ratio.")
+            # execute tight layout to obtain proper subplot parameters
             for fig, _ in plots_filtered:
-                layout_engine = fig.get_layout_engine()
-                if isinstance(layout_engine, mpl.layout_engine.TightLayoutEngine):
-                    # execute tight layout engine
-                    fig.set_figheight(figsize_spec["width"] * figsize_spec["ratio"]) # TODO this somehow improves the subplotparams?
-                    layout_engine.execute(fig)
-                    # turn off tight layout engine (since incompatible with Divider as axes_locator)
-                    fig.set_layout_engine("none")
+                if isinstance(fig.get_layout_engine(), mpl.layout_engine.TightLayoutEngine):
+                    _execute_tight_layout_auto(fig)
                 else:
                     print("WARNING: consistent_size only works with tight layout engine.")
-            # compute max required padding
-            def get_padding(fig):
-                # return required padding for title, labels, ticks, etc.
-                l = fig.subplotpars.left * fig.get_figwidth()
-                r = (1 - fig.subplotpars.right) * fig.get_figwidth()
-                b = fig.subplotpars.bottom * fig.get_figheight()
-                t = (1 - fig.subplotpars.top) * fig.get_figheight()
-                return np.array([l, r, b, t])
-            l_max, r_max, b_max, t_max = np.max([get_padding(fig) for fig, _ in plots_filtered], axis=0)
-            horiz = [Size.Fixed(l_max), Size.Scaled(1), Size.Fixed(r_max)]
-            verti = [Size.Fixed(b_max), Size.Scaled(figsize_spec["ratio"]), Size.Fixed(t_max)]
-            # compute new height to adapt ratio to ratio of axes instead of figure
-            fig_width = figsize_spec["width"]
-            axes_width = fig_width - l_max - r_max
-            axes_height = axes_width * figsize_spec["ratio"]
-            fig_height = axes_height + t_max + b_max
-            # change axes locator to Divider and resize figures
+            # compute max figure height
+            height_max = np.max([fig.get_figheight() for fig, _ in plots_filtered])
+            # compute max required padding for title, labels, ticks, etc.
+            l_max, b_max, r_max, t_max = np.max([_get_padding(fig) for fig, _ in plots_filtered], axis=0)
+            # set max figure height and required padding for all plots
             for fig, _ in plots_filtered:
-                # place axis in divider
-                divider = Divider(fig, (0, 0, 1, 1), horiz, verti, aspect=True)
-                fig.gca().set_axes_locator(divider.new_locator(nx=1, ny=1))
-                # set new height
-                fig.set_figheight(fig_height)
+                # set max figure height
+                fig.set_figheight(height_max)
+                # recalculate layout and then turn off tight layout engine (otherwise paddings are changed again)
+                fig.get_layout_engine().execute(fig)
+                fig.set_layout_engine("none")
+                # set max required padding
+                _set_padding(fig, left=l_max, bottom=b_max, right=r_max, top=t_max)
 
         # show figures
         if show or Plotter.save_always:

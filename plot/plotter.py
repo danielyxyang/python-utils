@@ -137,6 +137,9 @@ class Plotter():
                 ip.run_line_magic("matplotlib", "ipympl")
             else:
                 ip.run_line_magic("matplotlib", "inline")
+                # display images without cropping
+                # https://github.com/jupyter/notebook/issues/2640#issuecomment-579369065
+                ip.run_line_magic("config", "InlineBackend.print_figure_kwargs = {'bbox_inches': None}")
 
             # enable interactive plots on Colab
             # https://matplotlib.org/ipympl/installing.html#google-colab

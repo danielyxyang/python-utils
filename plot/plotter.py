@@ -592,10 +592,14 @@ class Plotter():
         # show figures
         if show or Plotter.save_always:
             # create grid of figures
+            if figsize_spec["spec"] is not None:
+                grid_width = figsize_spec["width"]
+            else:
+                grid_width = np.max([fig.get_figwidth() for fig, _ in plots_filtered])
             grid = widgets.GridspecLayout(
                 n_rows=int(np.ceil(len(plots)/show_ncols)),
                 n_columns=show_ncols,
-                width="{}in".format((figsize_spec["width"]+0.5)*show_ncols),
+                width="{}in".format((grid_width+0.5)*show_ncols),
             )
             for i, (fig, name) in enumerate(plots):
                 if fig is None:

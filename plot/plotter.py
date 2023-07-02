@@ -424,9 +424,9 @@ class Plotter():
                 axis.yaxis.set_major_locator(FilterTicksLocator(axis.yaxis.get_major_locator(), [0]))
                 # move xlabel and ylabel
                 axis.xaxis.set_label_text(axis.get_xlabel(), ha="right", va="bottom")
-                axis.xaxis.set_label_coords(1, 0.52)
+                axis.xaxis.set_label_coords(1, 0.05, transform=axis.get_yaxis_transform())
                 axis.yaxis.set_label_text(axis.get_ylabel(), ha="left", va="top", rotation="horizontal")
-                axis.yaxis.set_label_coords(0.52, 1)
+                axis.yaxis.set_label_coords(0.2, 1, transform=axis.get_xaxis_transform())
             # set legend
             if legend:
                 if isinstance(legend, dict):

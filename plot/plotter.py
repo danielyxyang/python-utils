@@ -45,12 +45,17 @@ def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=Fa
     else:
         print("WARNING: layout engine {} not supported for automatic computation of figure height.".format(type(layout_engine).__name__))
     
+    # initialize figure height to some sufficiently large height
+    fig.set_figheight(50)
+    layout_engine.execute(fig)
+    if verbose:
+        print("{:5.2f}".format(fig.get_figheight()))
     # iteratively update figure height until layout engine converges
     for _ in range(max_iter):
         # compute new figure height
         new_height = fig.get_tightbbox().height + 2 * h_pad_inch
         if verbose:
-            print("{:.2f} {:6.3f} {:6.1%}".format(new_height, new_height - fig.get_figheight(), new_height / fig.get_figheight() - 1))
+            print("{:5.2f} {:6.3f} {:6.1%}".format(new_height, new_height - fig.get_figheight(), new_height / fig.get_figheight() - 1))
         # check early stopping
         if (
             (prec_mode == "abs" and np.abs(new_height - fig.get_figheight()) < prec)

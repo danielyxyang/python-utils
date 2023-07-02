@@ -472,7 +472,7 @@ class Plotter():
         plots,
         # parameters for figure size
         figsize=None,
-        figwidth=1, ratio=None,
+        figwidth=1, axratio=None,
         figsize_unit="base",
         consistent_size=False,
         # parameters for other properties
@@ -489,7 +489,7 @@ class Plotter():
             1) Provide the size of the figure as tuple (width, height) using the
             parameter figsize.
             2) Provide the width of the figure and ratio of the axes using the
-            parameters figwidth and ratio. The height of the figure is then
+            parameters figwidth and axratio. The height of the figure is then
             determined automatically.
         
         In order to use consistent_size the figure size must be provided
@@ -507,8 +507,8 @@ class Plotter():
             figwidth (float, optional): The width of the figure given in
                 figsize_unit. This parameter is ignored if figsize is given.
                 Defaults to 1.
-            ratio (float, optional): The height/width ratio of the axes, not of
-                the figure. This parameter is ignored if figsize is given.
+            axratio (float, optional): The height/width ratio of the axes, not
+                of the figure. This parameter is ignored if figsize is given.
                 Defaults to None (golden mean ratio).
             figsize_unit ("base", "inch" or "cm"): The unit in which the width
                 and/or height of the figure are specified. The size can be
@@ -562,7 +562,7 @@ class Plotter():
             figsize_spec = dict(
                 spec="width_ratio",
                 width=figwidth * figsize_unit,
-                ratio=ratio if ratio is not None else (np.sqrt(5.0) - 1.0) / 2.0, # golden mean
+                ratio=axratio if axratio is not None else (np.sqrt(5.0) - 1.0) / 2.0, # golden mean
             )
         else:
             figsize_spec = dict(spec=None)

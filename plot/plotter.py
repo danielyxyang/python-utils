@@ -605,7 +605,7 @@ class Plotter():
             return
         # ensure plots are named
         plots = [
-            plot if plot is None or isinstance(plot, tuple) else (plot, "plot{}".format(plots.number))
+            plot if plot is None or isinstance(plot, tuple) else (plot, "plot{}".format(plot.number))
             for plot in plots
         ]
         # define list of non-empty plots for simpler for-loops (aliasing plots)

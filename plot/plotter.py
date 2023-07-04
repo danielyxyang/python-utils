@@ -784,27 +784,21 @@ class Plotter():
         fig_to.canvas.flush_events()
 
 
-class DynamicPlotter():
-    """Class providing support for dynamically updating plots."""
-    interactive = False
-
-    @staticmethod
-    def set_interactive(interactive=True):
-        """Enable or disable interactive plots based on ipyml backend."""
-        DynamicPlotter.interactive = interactive
-
+class DynamicPlotter(Plotter):
+    """Provide support for dynamically updating plots."""
+    
     def __init__(self):
         self.fig = None
         self.axis = None # currently active axis
         self.artists = {}
         self.__displayed = False
     
-    def create(self):
+    def create(self, **kwargs):
         """Create dynamic plot."""
         # create figure
         if self.fig is not None:
             plt.close(self.fig)
-        self.fig, self.axis = plt.subplots(constrained_layout=True)
+        self.fig, self.axis = super().create(**kwargs)
         self.artists = {}
         self.__displayed = False
 

@@ -39,6 +39,7 @@ git submodule update
 Assuming that `python-utils` is located in the folder `utils_ext` within the top-level Python package, you can import its functions in the following way:
 ```python
 from utils_ext.math import cartesian_product
+from utils_ext.plot import Plotter
 from utils_ext.tools import Profiler
 ```
 

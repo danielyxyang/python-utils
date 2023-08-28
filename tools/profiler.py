@@ -36,7 +36,7 @@ class Profiler():
             self._records[name]["end"] = None
 
     def stop(self, name=None):
-        """Stop timer of profiler."""
+        """Stop timer of profiler and save time under given name cumulatively."""
         if name is None:
             # simple profiling
             if self._start is None:
@@ -49,6 +49,7 @@ class Profiler():
                 print("WARNING: profiler has not been started for \"{}\" yet".format(name))
                 return
             self._records[name]["end"] = time.time()
+            self._records[name]["time"] += self.time(name)
 
     def time(self, name=None):
         """Return last stopped time."""
@@ -65,18 +66,6 @@ class Profiler():
                 return
             return self._records[name]["end"] - self._records[name]["start"]
 
-    def save(self, name):
-        """Save last stopped time under given name cumulatively."""
-        if name not in self._records:
-            self._records[name] = {
-                "start": self._start,
-                "end": self._end,
-                "time": self.time(),
-                "info": None,
-            }
-        else:
-            self._records[name]["time"] += self.time(name)
-        
     def set_info(self, name, info):
         """Set profiling information for the stopped time under given name."""
         self._records[name]["info"] = info
@@ -131,7 +120,6 @@ class Profiler():
             if len(self.__names_context) > 0:
                 name_prev = self.__names_context[-1]
                 self.stop(name=name_prev)
-                self.save(name_prev)
             # start this session
             if disjoint:
                 self.__names_context.append(name)
@@ -141,7 +129,6 @@ class Profiler():
             finally:
                 # stop this session
                 self.stop(name=name)
-                self.save(name)
                 if disjoint:
                     self.__names_context.pop()
                 # start previous session

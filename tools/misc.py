@@ -1,7 +1,8 @@
-__all__ = ["LoopChecker", "LazyDict", "build_json_encoder"]
+__all__ = ["LoopChecker", "LazyDict", "CustomFormatter", "build_json_encoder"]
 
 import json
 import types
+from string import Formatter
 from collections import UserDict
 
 import numpy as np
@@ -26,6 +27,18 @@ class LazyDict(UserDict):
         if isinstance(self.data[key], types.FunctionType):
             self.data[key] = self.data[key]()
         return self.data[key]
+
+
+class CustomFormatter(Formatter):
+    def __init__(self, format_funcs={}):
+        super().__init__()
+        self.format_funcs = format_funcs
+    
+    def format_field(self, value, format_spec):
+        if format_spec in self.format_funcs:
+            return self.format_funcs[format_spec](value)
+        else:
+            return super().format_field(value, format_spec)
 
 
 def build_json_encoder(encoders=[]):

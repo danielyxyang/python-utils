@@ -34,11 +34,14 @@ class CustomFormatter(Formatter):
         super().__init__()
         self.format_funcs = format_funcs
     
-    def format_field(self, value, format_spec):
-        if format_spec in self.format_funcs:
-            return self.format_funcs[format_spec](value)
-        else:
-            return super().format_field(value, format_spec)
+    def format_field(self, value, format_specs):
+        format_specs = format_specs.split(":")
+        for format_spec in format_specs:
+            if format_spec in self.format_funcs:
+                value = self.format_funcs[format_spec](value)
+            else:
+                value = super().format_field(value, format_spec)
+        return value
 
 
 def build_json_encoder(encoders=[]):

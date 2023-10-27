@@ -34,13 +34,31 @@ class CustomFormatter(Formatter):
         super().__init__()
         self.format_funcs = format_funcs
     
+    def get_field(self, field_name, args, kwargs):
+        if (field_name.startswith("\'") and field_name.endswith("\'")) \
+        or (field_name.startswith("\"") and field_name.endswith("\"")):
+            # return inline string
+            return field_name[1:-1], None
+        else:
+            # return field value
+            return super().get_field(field_name, args, kwargs)
+    
     def format_field(self, value, format_specs):
+        # iterate through pipeline of formatting specifications
         format_specs = format_specs.split(":")
         for format_spec in format_specs:
-            if format_spec in self.format_funcs:
-                value = self.format_funcs[format_spec](value)
+            # check if formatting function should be applied elementwise or not
+            if format_spec.startswith("@"):
+                format_elementwise, format_spec = True, format_spec[1:]
             else:
-                value = super().format_field(value, format_spec)
+                format_elementwise, format_spec = False, format_spec
+            # define formatting function
+            if format_spec in self.format_funcs:
+                format_func = self.format_funcs[format_spec]
+            else:
+                format_func = lambda v: super(CustomFormatter, self).format_field(v, format_spec)
+            # apply formatting function
+            value = [format_func(v) for v in value] if format_elementwise else format_func(value)
         return value
 
 

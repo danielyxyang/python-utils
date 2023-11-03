@@ -30,6 +30,13 @@ class LazyDict(UserDict):
 
 
 class CustomFormatter(Formatter):
+    """Class for custom String formatting for more advanced String templates.
+    
+    - Provides support for inline string formatting (e.g. "{'Hi':10}")
+    - Provides support for custom formatting functions (e.g. "{some_list:len}" with format_funcs={"len": len})
+    - Provides support for chained formatting (e.g. "{some_list:len:5}" with format_funcs={"len": len})
+    - Provides support for elementwise formatting (e.g. "{some_list:@.2f:join}" with format_funcs={"join": ", ".join})
+    """
     def __init__(self, format_funcs={}):
         super().__init__()
         self.format_funcs = format_funcs

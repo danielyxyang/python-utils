@@ -33,6 +33,7 @@ class CustomFormatter(Formatter):
     """Class for custom String formatting for more advanced String templates.
     
     - Provides support for inline string formatting (e.g. "{'Hi':10}")
+    - Provides support for string template aligning by padding field names with spaces (e.g. "{some_field   :10}")
     - Provides support for custom formatting functions (e.g. "{some_list:len}" with format_funcs={"len": len})
     - Provides support for chained formatting (e.g. "{some_list:len:5}" with format_funcs={"len": len})
     - Provides support for elementwise formatting (e.g. "{some_list:@.2f:join}" with format_funcs={"join": ", ".join})
@@ -42,6 +43,7 @@ class CustomFormatter(Formatter):
         self.format_funcs = format_funcs
     
     def get_field(self, field_name, args, kwargs):
+        field_name = field_name.strip()
         if (field_name.startswith("\'") and field_name.endswith("\'")) \
         or (field_name.startswith("\"") and field_name.endswith("\"")):
             # return inline string

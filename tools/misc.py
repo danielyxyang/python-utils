@@ -1,9 +1,16 @@
-__all__ = ["LoopChecker", "LazyDict", "CustomFormatter", "build_json_encoder"]
+__all__ = [
+    "LoopChecker",
+    "LazyDict",
+    "CustomFormatter",
+    "flatten_dict",
+    "build_json_encoder",
+]
 
 import json
 import types
 from string import Formatter
 from collections import UserDict
+from collections.abc import MutableMapping
 
 import numpy as np
 
@@ -69,6 +76,25 @@ class CustomFormatter(Formatter):
             # apply formatting function
             value = [format_func(v) for v in value] if format_elementwise else format_func(value)
         return value
+
+
+def _flatten_dict_gen(d, parent_key, sep):
+    for key, value in d.items():
+        new_key = parent_key + sep + key if parent_key is not None else key
+        if isinstance(value, MutableMapping):
+            yield from flatten_dict(value, new_key, sep=sep).items()
+        else:
+            yield new_key, value
+
+def flatten_dict(d, parent_key=None, sep='/'):
+    """Flatten a dict with the given separator and under the given parent_key.
+    
+    The code is taken from [1].
+    
+    References:
+        [1] https://www.freecodecamp.org/news/how-to-flatten-a-dictionary-in-python-in-4-different-ways/
+    """
+    return dict(_flatten_dict_gen(d, parent_key, sep))
 
 
 def build_json_encoder(encoders=[]):

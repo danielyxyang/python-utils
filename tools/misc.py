@@ -44,10 +44,12 @@ class CustomFormatter(Formatter):
     - Provides support for custom formatting functions (e.g. "{some_list:len}" with format_funcs={"len": len})
     - Provides support for chained formatting (e.g. "{some_list:len:5}" with format_funcs={"len": len})
     - Provides support for elementwise formatting (e.g. "{some_list:@.2f:join}" with format_funcs={"join": ", ".join})
+    - Provides support for default values for None values or missing keys
     """
-    def __init__(self, format_funcs={}):
+    def __init__(self, format_funcs={}, default=None):
         super().__init__()
         self.format_funcs = format_funcs
+        self.default = default
     
     def get_field(self, field_name, args, kwargs):
         field_name = field_name.strip()
@@ -56,10 +58,19 @@ class CustomFormatter(Formatter):
             # return inline string
             return field_name[1:-1], None
         else:
-            # return field value
-            return super().get_field(field_name, args, kwargs)
+            try:
+                # return field value
+                return super().get_field(field_name, args, kwargs)
+            except KeyError:
+                if self.default is not None:
+                    return None, None
+                else:
+                    raise
     
     def format_field(self, value, format_specs):
+        # return default value for None values if provided
+        if self.default is not None and value is None:
+            return self.default
         # iterate through pipeline of formatting specifications
         format_specs = format_specs.split(":")
         for format_spec in format_specs:

@@ -23,16 +23,29 @@ def compute_bbox_intersection(bbox_A, bbox_B):
     )
 
 def compute_bbox_iou(bbox_A, bbox_B, ret_more=False):
-    # compute coordinates of overlapping box
-    bbox_inner = compute_bbox_intersection(bbox_A, bbox_B)
     # compute area
-    area = lambda box: (box[2] - box[0]) * (box[3] - box[1])
-    if bbox_inner[0] < bbox_inner[2] and bbox_inner[1] < bbox_inner[3]:
-        area_inner = area(bbox_inner)
-    else:
-        area_inner = 0
+    def area(bbox):
+        if bbox[0] < bbox[2] and bbox[1] < bbox[3]:
+            return (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+        else:
+            return 0
+    area_inner = area(compute_bbox_intersection(bbox_A, bbox_B))
     area_A = area(bbox_A)
     area_B = area(bbox_B)
+    # compute IoU and related metrics
+    iou = area_inner / (area_A + area_B - area_inner)
+    if ret_more:
+        ioA = area_inner / area_A
+        ioB = area_inner / area_B
+        return iou, ioA, ioB
+    else:
+        return iou
+
+def compute_pixel_iou(mask_A, mask_B, ret_more=False):
+    # compute area
+    area_inner = np.count_nonzero(mask_A * mask_B)
+    area_A = np.count_nonzero(mask_A)
+    area_B = np.count_nonzero(mask_B)
     # compute IoU and related metrics
     iou = area_inner / (area_A + area_B - area_inner)
     if ret_more:

@@ -54,3 +54,22 @@ def compute_pixel_iou(mask_A, mask_B, ret_more=False):
         return iou, ioA, ioB
     else:
         return iou
+
+def compute_pixel_iou2(mask_and_bbox_A, mask_and_bbox_B, ret_more=False):
+    mask_A, bbox_A = mask_and_bbox_A
+    mask_B, bbox_B = mask_and_bbox_B
+    if compute_bbox_intersection(bbox_A, bbox_B) is None:
+        # short-cut if intersection is empty
+        return (0, 0, 0) if ret_more else 0
+    else:
+        # pad masks to same bbox and compute IoU
+        def pad_to_union(mask, bbox, bbox_union):
+            pad_row = bbox[0] - bbox_union[0], bbox_union[2] - bbox[2]
+            pad_col = bbox[1] - bbox_union[1], bbox_union[3] - bbox[3]
+            return np.pad(mask, (pad_row, pad_col))
+        bbox_union = compute_bbox_union(bbox_A, bbox_B)
+        return compute_pixel_iou(
+            pad_to_union(mask_A, bbox_A, bbox_union),
+            pad_to_union(mask_B, bbox_B, bbox_union),
+            ret_more=ret_more,
+        )

@@ -1,5 +1,7 @@
 import numpy as np
 
+def is_bbox_valid(bbox):
+    return bbox is not None and len(bbox) == 4 and bbox[0] <= bbox[2] and bbox[1] <= bbox[3]
 
 def compute_bbox_of_mask(mask):
     r_min, r_max = np.flatnonzero(np.any(mask, axis=1))[[0,-1]]
@@ -15,20 +17,18 @@ def compute_bbox_union(bbox_A, bbox_B):
     )
 
 def compute_bbox_intersection(bbox_A, bbox_B):
-    return (
+    bbox = (
         max(bbox_A[0], bbox_B[0]),
         max(bbox_A[1], bbox_B[1]),
         min(bbox_A[2], bbox_B[2]),
         min(bbox_A[3], bbox_B[3]),
     )
+    return bbox if is_bbox_valid(bbox) else None
 
 def compute_bbox_iou(bbox_A, bbox_B, ret_more=False):
     # compute area
     def area(bbox):
-        if bbox[0] < bbox[2] and bbox[1] < bbox[3]:
-            return (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-        else:
-            return 0
+        return (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) if is_bbox_valid(bbox) else 0
     area_inner = area(compute_bbox_intersection(bbox_A, bbox_B))
     area_A = area(bbox_A)
     area_B = area(bbox_B)

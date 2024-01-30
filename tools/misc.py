@@ -68,11 +68,15 @@ class CustomFormatter(Formatter):
                     raise
     
     def format_field(self, value, format_specs):
+        format_specs = format_specs.split(":")
         # return default value for None values if provided
         if self.default is not None and value is None:
-            return self.default
+            # apply last format specification if it only specifies the width
+            if len(format_specs) > 0 and format_specs[-1].isdecimal():
+                return super(CustomFormatter, self).format_field(self.default, format_specs[-1])
+            else:
+                return self.default
         # iterate through pipeline of formatting specifications
-        format_specs = format_specs.split(":")
         for format_spec in format_specs:
             # check if formatting function should be applied elementwise or not
             if format_spec.startswith("@"):

@@ -5,7 +5,7 @@ import numpy as np
 
 def cartesian_product(*arrays):
     """Compute N-dimensional cartesian product between 1D arrays."""
-    
+
     # VERSION 1: https://stackoverflow.com/a/11146645
     arrays = np.asarray(arrays)
     la = len(arrays)
@@ -14,14 +14,14 @@ def cartesian_product(*arrays):
     for i, a in enumerate(np.ix_(*arrays)):
         arr[...,i] = a
     return arr.reshape(-1, la)
-    
+
     # VERSION 2
     # return np.array(list(itertools.product(*arrays)))
 
 
 def setdiff2d(a, b):
     """Compute set difference between two 2D lists."""
-    
+
     # VERSION 1: https://stackoverflow.com/a/11903368
     a = np.asarray(a)
     b = np.asarray(b)
@@ -29,7 +29,7 @@ def setdiff2d(a, b):
         a.view([("", a.dtype)] * a.shape[1]),
         b.view([("", b.dtype)] * b.shape[1]),
     ).view(a.dtype).reshape(-1, a.shape[1])
-    
+
     # VERSION 2
     # a = set(map(tuple, a))
     # b = set(map(tuple, b))

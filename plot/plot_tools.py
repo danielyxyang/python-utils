@@ -1,7 +1,7 @@
 __all__ = ["MultipleTicks", "FilterTicksLocator"]
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class MultipleTicks():
@@ -10,7 +10,7 @@ class MultipleTicks():
     This class complements matplotlib.ticker.MultipleLocator [1] by adding the
     possibility to format ticks as fractions and/or to represent the constant
     with a non-numeric symbol.
-    
+
     The formatting is inspired from [2].
 
     Examples:
@@ -32,7 +32,7 @@ class MultipleTicks():
         [1] https://matplotlib.org/stable/api/ticker_api.html#matplotlib.ticker.MultipleLocator
         [2] https://stackoverflow.com/a/53586826
     """
-    
+
     def __init__(self, num, den=1, number_in_frac=False, fracformat=r"\frac{%s}{%s}"):
         """Public constructor.
 
@@ -56,7 +56,7 @@ class MultipleTicks():
         self.den = den
         self.symbol_in_frac = number_in_frac
         self.fracformat = fracformat
-    
+
     def _format_scalar(self, scalar):
         """Format scalar value."""
         if self.num_latex is None:
@@ -73,7 +73,7 @@ class MultipleTicks():
                 return "$-{}$".format(self.num_latex)
             else:
                 return "${}{}$".format(scalar, self.num_latex)
-    
+
     def _format_fraction(self, num, den):
         """Format fractional value."""
         if self.num_latex is None:
@@ -99,7 +99,7 @@ class MultipleTicks():
                     return "${}{}$".format(self.fracformat % (num, den), self.num_latex)
                 else: # num <= -1
                     return "$-{}{}$".format(self.fracformat % (-num, den), self.num_latex)
-    
+
     def _format_multiple(self, x, pos):
         """Format value as scalar or fraction."""
         if self.den <= 1:
@@ -141,7 +141,7 @@ class FilterTicksLocator(plt.Locator):
     def __call__(self):
         locs = np.asarray(self.locator())
         return locs[~np.isin(locs, self.filter)]
-    
+
     def tick_values(self, vmin, vmax):
         locs = np.asarray(self.locator.tick_values(vmin, vmax))
         return locs[~np.isin(locs, self.filter)]

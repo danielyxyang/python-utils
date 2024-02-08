@@ -1,7 +1,7 @@
 __all__ = ["Profiler"]
 
-import time
 import contextlib
+import time
 
 import numpy as np
 
@@ -27,9 +27,9 @@ class Profiler():
             # named profiling
             if name not in self._records:
                 self._records[name] = {
-                    "start": None, 
-                    "end": None, 
-                    "time": 0.0, 
+                    "start": None,
+                    "end": None,
+                    "time": 0.0,
                     "info": None
                 }
             self._records[name]["start"] = time.time()
@@ -69,22 +69,22 @@ class Profiler():
     def set_info(self, name, info):
         """Set profiling information for the stopped time under given name."""
         self._records[name]["info"] = info
-        
+
     def merge(self, profiler):
         """Merge records with another profiler."""
         self._records.update(profiler._records)
-    
+
     def reset(self):
         """Reset profiler and delete all records."""
         self._start = None
         self._end = None
         self._records.clear()
-        
+
     def print(self, names=None):
         """Print saved times and profiling information for the given list of names."""
         if names is None:
             names = self._records.keys()
-                
+
         print("Profiling")
         max_length = np.max([len(name) for name in names])
         total = 0
@@ -98,11 +98,11 @@ class Profiler():
                 " ({})".format(info) if info is not None else "",
             ))
         print("  {:{}} {}".format("Total:", max_length + 1, "{:4.2f}s".format(total)))
-        
+
     @contextlib.contextmanager
     def cm(self, name=None, disjoint=True):
         """Create context manager for profiling.
-        
+
         Args:
             name (str): Name of the profiling session.
             disjoint (bool): Flag whether recorded time should be disjoint from

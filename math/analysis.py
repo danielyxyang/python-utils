@@ -13,14 +13,14 @@ def case_distinction(cases, **kwargs):
 
     Returns:
         list: The resulting list of values determined by case distinction.
-    """    
+    """
     choices, conditions = zip(*cases)
     return np.select(conditions, choices, **kwargs)
 
 
 def intersect_functions(f1, f2, mode="left"):
     """Compute list of indices of the intersection points of two functions.
-    
+
     The intersection points are computed by finding the zero-crossings of the
     difference of f1 and f2. Using "left" the point to the left of the
     intersection point is returned and using "right" the point to the right.

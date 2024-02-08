@@ -44,7 +44,7 @@ class CheckboxList(widgets.VBox, widgets.widget_description.DescriptionWidget, w
 
         self.checkboxes = checkboxes
         self.__update_value()
-    
+
     # PRIVATE METHODS
 
     def __update_value(self, *args):

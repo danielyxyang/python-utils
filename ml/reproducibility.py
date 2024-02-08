@@ -5,13 +5,14 @@ __all__ = [
     "OUTPUT_CHECKER",
 ]
 
-import os
-import random
 import contextlib
 import logging
+import os
 import pickle
+import random
 
 import numpy as np
+
 try:
     import torch
     import torch.nn as nn
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 def seed_everything(seed=None, deterministic=False):
     """Set seeds and ensures usage of deterministic algorithms.
-    
+
     Args:
         seed (int, optional): The seed set for each dataloader worker. Defaults
             to None.
@@ -56,7 +57,7 @@ def _seed_dataloader_worker(worker_id):
 
 def seed_dataloader(seed):
     """Return arguments to set the seed in dataloader workers.
-    
+
     Args:
         seed (int): The seed set for each dataloader worker.
 
@@ -85,7 +86,7 @@ class OutputChecker:
         self.phase = None
         self.scopes = []
         self.outputs = {}
-    
+
     def reset(self):
         self.phase = None
         self.scopes.clear()
@@ -107,7 +108,7 @@ class OutputChecker:
                 with open(path, "wb") as f:
                     pickle.dump(self.outputs, f)
                 logger.info(f"Collected outputs saved to {path}.")
-    
+
     @contextlib.contextmanager
     def verify(self, path=None):
         try:
@@ -168,13 +169,13 @@ class OutputChecker:
         else:
             logger.warn(f"Object of type {type(obj)} can not be checked, since it is not callable.")
             return obj
-    
+
     @staticmethod
     def _update_tensors(out_prev, out):
         if type(out_prev) is not type(out):
             logger.warn(f"Output with different types {type(out_prev)} and {type(out)}.")
             return out_prev
-        
+
         if _IMPORTED_TORCH and isinstance(out_prev, torch.Tensor):
             # copy previous values into current tensor to preserve computation graph
             out.data.copy_(out_prev)
@@ -194,13 +195,13 @@ class OutputChecker:
                 return out_prev
         else:
             return out_prev
-    
+
     @staticmethod
     def diff(out1, out2):
         if type(out1) is not type(out2):
             logger.warn(f"Output with different types {type(out1)} and {type(out2)}.")
             return 0, 0, 0
-        
+
         if isinstance(out1, np.ndarray):
             diffs = np.abs(out1 - out2)
             return np.mean(diffs), np.max(diffs), np.sum(diffs)

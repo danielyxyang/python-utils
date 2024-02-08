@@ -2,7 +2,7 @@ __all__ = ["GIFSaver"]
 
 import os
 
-from IPython.display import display, Image
+from IPython.display import Image, display
 
 
 class GIFSaver():
@@ -10,19 +10,19 @@ class GIFSaver():
         self.filepath = os.path.join(output, "gif", filename)
         self.dpi = dpi
         self.frame_count = 0
-         
+
         os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
-    
+
     def filepath_frame(self, i):
         return "{}-{}.png".format(self.filepath, i)
-    
+
     def filepath_gif(self):
         return "{}.gif".format(self.filepath)
 
     def add_frame(self, fig):
         fig.savefig(self.filepath_frame(self.frame_count), dpi=self.dpi)
         self.frame_count += 1
-    
+
     def finish(self, optimize=True, show=True, **kwargs):
         """Finish the GIF by saving and displaying it.
 
@@ -32,14 +32,15 @@ class GIFSaver():
 
         [1] https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif
         [2] https://github.com/LucaCappelletti94/pygifsicle
-        
+
         Args:
             optimize (bool, optional): Flag whether to optimize GIF using
                 gifsicle. Defaults to True.
             show (bool, optional): Flag whether to show GIF. Defaults to True.
         """
-        from tqdm import tqdm
         import imageio.v3 as imageio
+        from tqdm import tqdm
+
         # read gif images
         images = []
         for i in tqdm(range(self.frame_count), desc="Create GIF"):

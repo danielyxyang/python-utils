@@ -8,9 +8,9 @@ __all__ = [
 
 import json
 import types
-from string import Formatter
 from collections import UserDict
 from collections.abc import MutableMapping
+from string import Formatter
 
 import numpy as np
 
@@ -21,7 +21,7 @@ class LoopChecker():
         self.location = location
         self.threshold = int(threshold)
         self.counter = 0
-    
+
     def __call__(self):
         self.counter = (self.counter + 1) % self.threshold
         if(self.counter == 0):
@@ -38,7 +38,7 @@ class LazyDict(UserDict):
 
 class CustomFormatter(Formatter):
     """Class for custom String formatting for more advanced String templates.
-    
+
     - Provides support for inline string formatting (e.g. "{'Hi':10}")
     - Provides support for string template aligning by padding field names with spaces (e.g. "{some_field   :10}")
     - Provides support for custom formatting functions (e.g. "{some_list:len}" with format_funcs={"len": len})
@@ -50,7 +50,7 @@ class CustomFormatter(Formatter):
         super().__init__()
         self.format_funcs = format_funcs
         self.default = default
-    
+
     def get_field(self, field_name, args, kwargs):
         field_name = field_name.strip()
         if (field_name.startswith("\'") and field_name.endswith("\'")) \
@@ -66,7 +66,7 @@ class CustomFormatter(Formatter):
                     return None, None
                 else:
                     raise
-    
+
     def format_field(self, value, format_specs):
         format_specs = format_specs.split(":")
         # return default value for None values if provided
@@ -103,9 +103,9 @@ def _flatten_dict_gen(d, parent_key, sep):
 
 def flatten_dict(d, parent_key=None, sep='/'):
     """Flatten a dict with the given separator and under the given parent_key.
-    
+
     The code is taken from [1].
-    
+
     References:
         [1] https://www.freecodecamp.org/news/how-to-flatten-a-dictionary-in-python-in-4-different-ways/
     """

@@ -1,16 +1,15 @@
 __all__ = ["Plotter", "DynamicPlotter"]
 
-import os
 import contextlib
-
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib.collections import PatchCollection
+import os
 
 import ipywidgets as widgets
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
 from IPython import get_ipython
 from IPython.display import display
+from matplotlib.collections import PatchCollection
 
 from .plot_tools import FilterTicksLocator
 
@@ -27,7 +26,7 @@ def _warn_incorrect_layout_engine(func, fig):
 
 def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=False):
     """Automatically sets figure height tightest possible while adhering to padding.
-    
+
     This function retrieves the desired padding from the figure's layout engine
     and computes a new height based on the height of the figure's tight bounding
     box. Since the layout engines often themselve rely on the current figure
@@ -47,7 +46,7 @@ def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=Fa
         layout_engine.execute(fig)
     else:
         _warn_incorrect_layout_engine(_set_figheight_auto, fig)
-    
+
     # initialize figure height to some sufficiently large height
     fig.set_figheight(50)
     layout_engine.execute(fig)
@@ -74,7 +73,7 @@ def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=Fa
 
 def _get_padding(fig):
     """Get the figure's padding in inches.
-    
+
     This function relies on the subplot parameters and therefore only works with
     the tight layout engine.
     """
@@ -90,7 +89,7 @@ def _get_padding(fig):
 
 def _set_padding(fig, left, bottom, right, top):
     """Set the figure's padding in inches.
-    
+
     This function relies on the subplot parameters and therefore only works with
     the tight layout engine.
     """
@@ -106,12 +105,12 @@ def _set_padding(fig, left, bottom, right, top):
 
 def _execute_tight_layout_auto(fig, prec=0.01, max_iter=10, verbose=False):
     """Iteratively executes tight layout engine until convergence.
-    
+
     The tight layout engine seems to rely on the current layout of the figure.
     Hence, the layout engine is executed iteratively until the adjusted subplot
     parameters stabilize, which specify the figure's paddings. A related issue
     is described here [1].
-    
+
     References:
         [1] https://github.com/matplotlib/matplotlib/issues/11809
     """
@@ -136,13 +135,13 @@ def _execute_tight_layout_auto(fig, prec=0.01, max_iter=10, verbose=False):
             break
         # update previous padding
         padding = padding_new
-    
+
 
 class Plotter():
     r"""Extend and simplify the process of creating, showing and saving plots.
-    
+
     The main features include:
-        - Configure Matplotlib's style-relevant rcParams more simpler. 
+        - Configure Matplotlib's style-relevant rcParams more simpler.
         - Set properties of axes using a more powerful set-method.
         - Set figure size based on figure width and axes ratio.
         - Show interactive plots in notebooks.
@@ -180,7 +179,7 @@ class Plotter():
     """
     interactive = False
     is_colab = False
-    
+
     basewidth = 6 # inches
     save_dir = "."
     save_format = "png"
@@ -212,7 +211,7 @@ class Plotter():
         """
         if interactive is not None: Plotter.interactive = interactive
         if is_colab is not None:    Plotter.is_colab = is_colab
-        
+
         # enable interactive plots in IPython environment
         ip = get_ipython()
         if ip is not None:
@@ -228,7 +227,8 @@ class Plotter():
             # enable interactive plots on Colab
             # https://matplotlib.org/ipympl/installing.html#google-colab
             if Plotter.interactive and Plotter.is_colab:
-                from google.colab import output # pyright: ignore[reportMissingImports]
+                from google.colab import \
+                    output  # pyright: ignore[reportMissingImports]
                 output.enable_custom_widget_manager()
 
         # prevent figures to be displayed without calling plt.show() or display()
@@ -249,7 +249,7 @@ class Plotter():
         The default style of the plots can be configured with Matplotlib's
         rcParams and style sheets. The default rcParams can be found here [1]
         and a list of different built-in style sheets here [2].
-        
+
         Args:
             basewidth (float, optional): The basewidth of the area in which the
                 plots are used in inches. This can be the width of the output
@@ -277,7 +277,7 @@ class Plotter():
                 "tikz" requires the package `tikzplotlib`. Defaults to None.
             save_always (bool, optional): Flag whether plots should be always
                 saved or not. Defaults to None.
-        
+
         References:
             [1] https://matplotlib.org/stable/tutorials/introductory/customizing.html#the-default-matplotlibrc-file
             [2] https://matplotlib.org/stable/gallery/style_sheets/style_sheets_reference.html
@@ -295,7 +295,7 @@ class Plotter():
                 mpl.rc_file_defaults()
             elif style == "seaborn":
                 # use original seaborn theme
-                import seaborn as sns # pyright: ignore[reportMissingImports]
+                import seaborn as sns  # pyright: ignore[reportMissingImports]
                 sns.set_theme()
             else:
                 # use given style specification
@@ -332,7 +332,7 @@ class Plotter():
                 })
             else:
                 plt.rcParams.update({"text.usetex": False})
-        
+
         # update rcParams with custom parameters
         if rcparams is not None:
             plt.rcParams.update(rcparams)
@@ -362,7 +362,7 @@ class Plotter():
                 Plotter.save_format,
                 Plotter.save_always,
             ) = prev
-    
+
     # PLOTTING FUNCTIONS
 
     @staticmethod
@@ -377,13 +377,13 @@ class Plotter():
             centered in space. The parameters `pad`, `w_pad` and `h_pad` must be
             specified as a fraction of the font size.
             - The constrained layout engine adjusts the axes size using layout
-            grids, such that all titles, labels and ticks fit into the given 
+            grids, such that all titles, labels and ticks fit into the given
             figure size. If multiple subplots exist, they are distributed across
             space unless `compress` is set to True. The parameters `w_pad` and
             `h_pad` must be specified in inches (?).
         Note that some functionalities of Plotter only work with the tight
         layout engine.
-        
+
         Args:
             layout (str or dict): The layout engine to be used for the figure.
                 Additional layout engine parameters [1] can be specified by
@@ -395,10 +395,10 @@ class Plotter():
             gridspec (dict): Keyword arguments passed to `GridSpec`. Defaults to
                 {}.
             **kwargs: Keyword arguments passed to `subplots` function [3].
-        
+
         Returns:
             Tuple of Figure and Axes instance.
-        
+
         References:
             [1] https://matplotlib.org/stable/api/layout_engine_api.html
             [2] https://stackoverflow.com/a/72204558
@@ -410,10 +410,10 @@ class Plotter():
         else:
             layout_name = layout
             layout_params = {}
-        
+
         # create figure and axes
         fig, axes = plt.subplots(layout=layout_name, subplot_kw=subplot, gridspec_kw=gridspec, **kwargs)
-        
+
         # set layout engine parameters
         fig.get_layout_engine().set(**layout_params)
 
@@ -424,7 +424,7 @@ class Plotter():
         if Plotter.interactive:
             fig.canvas.toolbar_position = "top"
             fig.canvas.header_visible = False
-        
+
         return fig, axes
 
     @staticmethod
@@ -471,7 +471,7 @@ class Plotter():
                 additional "order" keyword for specifying the order of artists
                 by position. Defaults to False.
             **kwargs: Keyword arguments passed to `set` [1].
-        
+
         References:
             [1] https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html
         """
@@ -560,7 +560,7 @@ class Plotter():
             2) Provide the width of the figure and ratio of the axes using the
             parameters figwidth and axratio. The height of the figure is then
             determined automatically.
-        
+
         In order to use consistent_size the figure size must be provided
         according to 2) and all plots must use the tight layout engine. The
         reason is that consistent_size relies on the fig.subplotpars which are
@@ -636,7 +636,7 @@ class Plotter():
             )
         else:
             figsize_spec = dict(spec=None)
-        
+
         # set figure size and axis properties
         for fig, _ in plots_filtered:
             # set figure size
@@ -651,7 +651,7 @@ class Plotter():
                 _set_figheight_auto(fig)
             # set properties of axes
             Plotter.set(fig.axes, **set)
-        
+
         # set consistent sizes (e.g. for side-by-side plots)
         if consistent_size:
             if figsize_spec["spec"] != "width_ratio":
@@ -725,7 +725,7 @@ class Plotter():
                     else:
                         width_latex = "{:.2f}in".format(width_in)
                         height_latex = "{:.2f}in".format(height_in)
-                    
+
                     # save figure to file
                     if save_format == "png":
                         filepath += ".png"
@@ -786,13 +786,13 @@ class Plotter():
 
 class DynamicPlotter(Plotter):
     """Provide support for dynamically updating plots."""
-    
+
     def __init__(self):
         self.fig = None
         self.axis = None # currently active axis
         self.artists = {}
         self.__displayed = False
-    
+
     def create(self, **kwargs):
         """Create dynamic plot."""
         # create figure
@@ -817,7 +817,7 @@ class DynamicPlotter(Plotter):
         """Display or redraw plot depending on changes to set of artists."""
         if out is None:
             out = contextlib.nullcontext()
-        
+
         if DynamicPlotter.interactive:
             if self.__displayed:
                 # (optional) rescale plot automatically
@@ -856,7 +856,7 @@ class DynamicPlotter(Plotter):
             update_f(self.artists[key])
         # set visibility of artist
         self.set_visible(self.artists[key], visible)
-    
+
     def dynamic_plot(self, key, *args, visible=True, **kwargs):
         """Plot dynamic Line2D artist on first call and update on later calls."""
         self.dynamic(
@@ -865,7 +865,7 @@ class DynamicPlotter(Plotter):
             lambda lines: [line.set_data(*args[2*i:2*i+2]) for i, line in enumerate(lines)],
             visible=visible,
         )
-    
+
     def dynamic_patch_collection(self, key, patches, visible=True, **kwargs):
         """Plot dynamic patch collection on first call and update on later calls."""
         self.dynamic(

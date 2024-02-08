@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def is_bbox_valid(bbox):
     return bbox is not None and len(bbox) == 4 and bbox[0] <= bbox[2] and bbox[1] <= bbox[3]
 

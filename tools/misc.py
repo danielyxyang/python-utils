@@ -7,6 +7,7 @@ __all__ = [
 ]
 
 import json
+import re
 import types
 from collections import UserDict
 from collections.abc import MutableMapping
@@ -51,6 +52,8 @@ class CustomFormatter(Formatter):
         self.format_funcs = format_funcs
         self.default = default
 
+        self._str_format_spec_pattern = re.compile("^(.?[<>\^])?\d+$")
+
     def get_field(self, field_name, args, kwargs):
         field_name = field_name.strip()
         if (field_name.startswith("\'") and field_name.endswith("\'")) \
@@ -72,7 +75,7 @@ class CustomFormatter(Formatter):
         # return default value for None values if provided
         if self.default is not None and value is None:
             # apply last format specification if it only specifies the width
-            if len(format_specs) > 0 and format_specs[-1].isdecimal():
+            if self._str_format_spec_pattern.match(format_specs[-1]):
                 return super(CustomFormatter, self).format_field(self.default, format_specs[-1])
             else:
                 return self.default

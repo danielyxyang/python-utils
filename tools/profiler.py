@@ -1,4 +1,7 @@
-__all__ = ["Profiler"]
+__all__ = [
+    "Timer",
+    "TimeProfiler",
+]
 
 import contextlib
 import time
@@ -6,8 +9,40 @@ import time
 import numpy as np
 
 
-class Profiler():
-    """Class for profiling execution time of code."""
+class Timer():
+    """Class for measuring execution time of one code section repeatedly."""
+
+    def __init__(self, num_warmup=0, num_cooldown=0):
+        self.num_warmup = num_warmup
+        self.num_cooldown = num_cooldown
+        self.times = []
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *exc):
+        self.times.append(time.time() - self.start)
+        del self.start
+
+    @property
+    def num_times(self):
+        """Number of measured times."""
+        return len(self.times) - self.num_warmup - self.num_cooldown
+
+    @property
+    def mean(self):
+        """Mean of times without warmup and cooldown measurements."""
+        return np.mean(self.times[self.num_warmup : len(self.times)-self.num_cooldown])
+
+    @property
+    def std(self):
+        """Standard deviation of times without warmup and cooldown measurements."""
+        return np.std(self.times[self.num_warmup : len(self.times)-self.num_cooldown])
+
+
+class TimeProfiler():
+    """Class for profiling execution times of different code sections."""
 
     def __init__(self):
         # simple profiling

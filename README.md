@@ -50,7 +50,7 @@ Assuming that `python-utils` is located in the folder `utils_ext` within the top
 ```python
 from utils_ext.math import cartesian_product
 from utils_ext.plot import Plotter
-from utils_ext.tools import Profiler
+from utils_ext.tools import TimeProfiler
 ```
 
 ## Make Local Changes

@@ -23,7 +23,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-def seed_everything(seed=None, deterministic=False):
+def seed_everything(seed=None, deterministic=False, verbose=True):
     """Set seeds and ensures usage of deterministic algorithms.
 
     Args:
@@ -31,16 +31,23 @@ def seed_everything(seed=None, deterministic=False):
             to None.
         deterministic (bool, optional): Flag whether algorithms should be as
             deterministic as possible. Defaults to False.
+        verbose (bool, optional): Flag whether to be verbose. Defaults to True.
     """
     # https://pytorch.org/docs/stable/notes/randomness.html
     # seed random number generators
     if seed is not None:
+        if verbose:
+            logger.info(f"Setting seeds to {seed}.")
+
         random.seed(seed)
         np.random.seed(seed)
         if _IMPORTED_TORCH:
             torch.manual_seed(seed)
     # use deterministic algorithms
     if deterministic:
+        if verbose:
+            logger.info(f"Using deterministic algorithms.")
+
         if _IMPORTED_TORCH:
             torch.use_deterministic_algorithms(True, warn_only=True)
             torch.backends.cudnn.benchmark = False

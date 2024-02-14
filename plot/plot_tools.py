@@ -1,4 +1,4 @@
-__all__ = ["MultipleTicks", "FilterTicksLocator"]
+__all__ = ["MultipleTicks", "FilterTicksLocator", "get_figsize"]
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -148,3 +148,28 @@ class FilterTicksLocator(plt.Locator):
 
     def set_params(self, **kwargs):
         self.locator.set_params(**kwargs)
+
+
+def get_figsize(ncols=1, nrows=1, width=7, height=None, ratio=(1, 1)):
+    """Compute the size of the figure based on the size of each axes.
+
+    Args:
+        ncols (int, optional): The number of columns in the figure. Defaults to 1.
+        nrows (int, optional): The number of rows in the figure. Defaults to 1.
+        width (int, optional): The width of each axes. Defaults to 7.
+        height (_type_, optional): The height of each axes. Defaults to None.
+        ratio (tuple, optional): _description_. Defaults to (1, 1).
+
+    Returns:
+        tuple: The total size of the figure in terms of (height, width).
+    """
+    if width is not None and height is not None:
+        figsize = (width, height)
+    elif width is not None and height is None:
+        figsize = (width, width * ratio[0] / ratio[1])
+    elif width is None and height is not None:
+        figsize = (height * ratio[1] / ratio[0], height)
+    else:
+        raise ValueError("Provide at least one of the values for width or height.")
+    figsize = (ncols * figsize[0], nrows * figsize[1])
+    return figsize

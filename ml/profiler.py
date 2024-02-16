@@ -1,4 +1,4 @@
-__all__ = ["TorchMemoryProfiler"]
+__all__ = ["TorchTimeProfiler", "TorchMemoryProfiler"]
 
 import gc
 import logging
@@ -13,6 +13,34 @@ except ImportError:
     _IMPORTED_TORCH = False
 
 logger = logging.getLogger(__name__)
+
+class TorchTimeProfiler(torch.profiler.profile):
+    def __init__(self, **kwargs):
+        super().__init__(activities=[
+            torch.profiler.ProfilerActivity.CPU,
+            torch.profiler.ProfilerActivity.CUDA,
+        ], **kwargs)
+
+    def cpu_time(self, row_limit=10):
+        return self.key_averages().table(sort_by="cpu_time", row_limit=row_limit, top_level_events_only=True)
+    def cpu_time_all(self, row_limit=10):
+        return self.key_averages().table(sort_by="cpu_time", row_limit=row_limit, top_level_events_only=False)
+
+    def cpu_time_total(self, row_limit=10):
+        return self.key_averages().table(sort_by="cpu_time_total", row_limit=row_limit, top_level_events_only=True)
+    def cpu_time_total_all(self, row_limit=10):
+        return self.key_averages().table(sort_by="cpu_time_total", row_limit=row_limit, top_level_events_only=False)
+
+    def cuda_time(self, row_limit=10):
+        return self.key_averages().table(sort_by="cuda_time", row_limit=row_limit, top_level_events_only=True)
+    def cuda_time_all(self, row_limit=10):
+        return self.key_averages().table(sort_by="cuda_time", row_limit=row_limit, top_level_events_only=False)
+
+    def cuda_time_total(self, row_limit=10):
+        return self.key_averages().table(sort_by="cuda_time_total", row_limit=row_limit, top_level_events_only=True)
+    def cuda_time_total_all(self, row_limit=10):
+        return self.key_averages().table(sort_by="cuda_time_total", row_limit=row_limit, top_level_events_only=False)
+
 
 class TorchMemoryProfiler():
     """Class for profiling GPU memory usage by PyTorch."""

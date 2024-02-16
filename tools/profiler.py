@@ -12,33 +12,36 @@ import numpy as np
 class Timer():
     """Class for measuring execution time of one code section repeatedly."""
 
-    def __init__(self, num_warmup=0, num_cooldown=0):
-        self.num_warmup = num_warmup
-        self.num_cooldown = num_cooldown
+    def __init__(self):
         self.times = []
 
     def __enter__(self):
-        self.start = time.time()
+        self.start = time.perf_counter()
         return self
 
     def __exit__(self, *exc):
-        self.times.append(time.time() - self.start)
+        self.times.append(time.perf_counter() - self.start)
         del self.start
 
     @property
     def num_times(self):
         """Number of measured times."""
-        return len(self.times) - self.num_warmup - self.num_cooldown
+        return len(self.times)
 
     @property
     def mean(self):
-        """Mean of times without warmup and cooldown measurements."""
-        return np.mean(self.times[self.num_warmup : len(self.times)-self.num_cooldown])
+        """Mean of measured times."""
+        return np.mean(self.times)
 
     @property
     def std(self):
-        """Standard deviation of times without warmup and cooldown measurements."""
-        return np.std(self.times[self.num_warmup : len(self.times)-self.num_cooldown])
+        """Standard deviation of measured times."""
+        return np.std(self.times)
+
+    @property
+    def total(self):
+        """Sum of measured times."""
+        return np.sum(self.times)
 
 
 class TimeProfiler():
@@ -56,7 +59,7 @@ class TimeProfiler():
         """Start timer of profiler."""
         if name is None:
             # simple profiling
-            self._start = time.time()
+            self._start = time.perf_counter()
             self._end = None
         else:
             # named profiling
@@ -67,7 +70,7 @@ class TimeProfiler():
                     "time": 0.0,
                     "info": None
                 }
-            self._records[name]["start"] = time.time()
+            self._records[name]["start"] = time.perf_counter()
             self._records[name]["end"] = None
 
     def stop(self, name=None):
@@ -77,13 +80,13 @@ class TimeProfiler():
             if self._start is None:
                 print("WARNING: profiler has not been started yet")
                 return
-            self._end = time.time()
+            self._end = time.perf_counter()
         else:
             # named profiling
             if name not in self._records:
                 print("WARNING: profiler has not been started for \"{}\" yet".format(name))
                 return
-            self._records[name]["end"] = time.time()
+            self._records[name]["end"] = time.perf_counter()
             self._records[name]["time"] += self.time(name)
 
     def time(self, name=None):

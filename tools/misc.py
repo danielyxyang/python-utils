@@ -52,7 +52,7 @@ class CustomFormatter(Formatter):
         self.format_funcs = format_funcs
         self.default = default
 
-        self._str_format_spec_pattern = re.compile("^(.?[<>\^])?\d+$")
+        self._str_format_spec_pattern = re.compile(r"^(.?[<>\^])?\d+$")
 
     def get_field(self, field_name, args, kwargs):
         field_name = field_name.strip()

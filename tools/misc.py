@@ -1,17 +1,14 @@
 __all__ = [
     "LoopChecker",
     "LazyDict",
-    "CustomFormatter",
     "flatten_dict",
     "build_json_encoder",
 ]
 
 import json
-import re
 import types
 from collections import UserDict
 from collections.abc import MutableMapping
-from string import Formatter
 
 import numpy as np
 
@@ -35,65 +32,6 @@ class LazyDict(UserDict):
         if isinstance(self.data[key], types.FunctionType):
             self.data[key] = self.data[key]()
         return self.data[key]
-
-
-class CustomFormatter(Formatter):
-    """Class for custom String formatting for more advanced String templates.
-
-    - Provides support for inline string formatting (e.g. "{'Hi':10}")
-    - Provides support for string template aligning by padding field names with spaces (e.g. "{some_field   :10}")
-    - Provides support for custom formatting functions (e.g. "{some_list:len}" with format_funcs={"len": len})
-    - Provides support for chained formatting (e.g. "{some_list:len:5}" with format_funcs={"len": len})
-    - Provides support for elementwise formatting (e.g. "{some_list:@.2f:join}" with format_funcs={"join": ", ".join})
-    - Provides support for default values for None values or missing keys
-    """
-    def __init__(self, format_funcs={}, default=None):
-        super().__init__()
-        self.format_funcs = format_funcs
-        self.default = default
-
-        self._str_format_spec_pattern = re.compile(r"^(.?[<>\^])?\d+$")
-
-    def get_field(self, field_name, args, kwargs):
-        field_name = field_name.strip()
-        if (field_name.startswith("\'") and field_name.endswith("\'")) \
-        or (field_name.startswith("\"") and field_name.endswith("\"")):
-            # return inline string
-            return field_name[1:-1], None
-        else:
-            try:
-                # return field value
-                return super().get_field(field_name, args, kwargs)
-            except KeyError:
-                if self.default is not None:
-                    return None, None
-                else:
-                    raise
-
-    def format_field(self, value, format_specs):
-        format_specs = format_specs.split(":")
-        # return default value for None values if provided
-        if self.default is not None and value is None:
-            # apply last format specification if it only specifies the width
-            if self._str_format_spec_pattern.match(format_specs[-1]):
-                return super(CustomFormatter, self).format_field(self.default, format_specs[-1])
-            else:
-                return self.default
-        # iterate through pipeline of formatting specifications
-        for format_spec in format_specs:
-            # check if formatting function should be applied elementwise or not
-            if format_spec.startswith("@"):
-                format_elementwise, format_spec = True, format_spec[1:]
-            else:
-                format_elementwise, format_spec = False, format_spec
-            # define formatting function
-            if format_spec in self.format_funcs:
-                format_func = self.format_funcs[format_spec]
-            else:
-                format_func = lambda v: super(CustomFormatter, self).format_field(v, format_spec)
-            # apply formatting function
-            value = [format_func(v) for v in value] if format_elementwise else format_func(value)
-        return value
 
 
 def _flatten_dict_gen(d, parent_key, sep):

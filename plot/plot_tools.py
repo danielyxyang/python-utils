@@ -5,7 +5,7 @@ import numpy as np
 
 
 class MultipleTicks():
-    """Locate and format ticks at multiples of some constant in LaTeX.
+    r"""Locate and format ticks at multiples of some constant in LaTeX.
 
     This class complements matplotlib.ticker.MultipleLocator [1] by adding the
     possibility to format ticks as fractions and/or to represent the constant

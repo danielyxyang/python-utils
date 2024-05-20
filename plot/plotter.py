@@ -1,5 +1,3 @@
-__all__ = ["Plotter", "DynamicPlotter"]
-
 import contextlib
 import os
 

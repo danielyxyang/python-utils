@@ -1,5 +1,3 @@
-__all__ = ["GIFSaver"]
-
 import os
 
 from IPython.display import Image, display

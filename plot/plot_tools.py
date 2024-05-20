@@ -1,5 +1,3 @@
-__all__ = ["MultipleTicks", "FilterTicksLocator", "get_figsize"]
-
 import matplotlib.pyplot as plt
 import numpy as np
 

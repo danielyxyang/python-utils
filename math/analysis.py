@@ -1,5 +1,3 @@
-__all__ = ["case_distinction", "intersect_functions"]
-
 import numpy as np
 
 

@@ -1,5 +1,3 @@
-__all__ = ["CheckboxList"]
-
 import ipywidgets as widgets
 from traitlets import Any
 

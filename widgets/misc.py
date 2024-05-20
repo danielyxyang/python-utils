@@ -1,5 +1,3 @@
-__all__ = ["display_table"]
-
 import pandas as pd
 from IPython.display import display
 

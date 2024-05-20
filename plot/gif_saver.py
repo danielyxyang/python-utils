@@ -14,10 +14,10 @@ class GIFSaver():
         os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
 
     def filepath_frame(self, i):
-        return "{}-{}.png".format(self.filepath, i)
+        return f"{self.filepath}-{i}.png"
 
     def filepath_gif(self):
-        return "{}.gif".format(self.filepath)
+        return f"{self.filepath}.gif"
 
     def add_frame(self, fig):
         fig.savefig(self.filepath_frame(self.frame_count), dpi=self.dpi)

@@ -75,13 +75,13 @@ class TimeProfiler():
         if name is None:
             # simple profiling
             if self._start is None:
-                logger.warning("Profiler has not been started yet")
+                logger.warning("Profiler has not been started yet.")
                 return
             self._end = time.perf_counter()
         else:
             # named profiling
             if name not in self._records:
-                logger.warning("Profiler has not been started for \"{}\" yet".format(name))
+                logger.warning(f"Profiler has not been started for \"{name}\" yet.")
                 return
             self._records[name]["end"] = time.perf_counter()
             self._records[name]["time"] += self.time(name)
@@ -91,13 +91,13 @@ class TimeProfiler():
         if name is None:
             # simple profiling
             if self._start is None or self._end is None:
-                logger.warning("Profiler has not recorded a time yet")
+                logger.warning(f"Profiler has not recorded a time yet.")
                 return
             return self._end - self._start
         else:
             # named profiling
             if name not in self._records or self._records[name]["start"] is None or self._records[name]["end"] is None:
-                logger.warning("Profiler has not recorded a time for \"{}\" yet".format(name))
+                logger.warning(f"Profiler has not recorded a time for \"{name}\" yet")
                 return
             return self._records[name]["end"] - self._records[name]["start"]
 

@@ -21,7 +21,7 @@ def _call_set_f(set_f, arg):
 
 
 def _warn_incorrect_layout_engine(func, fig):
-    logger.warning("{} does not support layout engine {}.".format(func.__name__, type(fig.get_layout_engine()).__name__))
+    logger.warning(f"{func.__name__} does not support layout engine {type(fig.get_layout_engine()).__name__}.")
 
 
 def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=False):
@@ -51,20 +51,20 @@ def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=Fa
     fig.set_figheight(50)
     layout_engine.execute(fig)
     if verbose:
-        logger.info("{:5.2f}".format(fig.get_figheight()))
+        logger.info(f"{fig.get_figheight():5.2f}")
     # iteratively update figure height until layout engine converges
     for _ in range(max_iter):
         # compute new figure height
         new_height = fig.get_tightbbox().height + 2 * h_pad_inch
         if verbose:
-            logger.info("{:5.2f} {:6.3f} {:6.1%}".format(new_height, new_height - fig.get_figheight(), new_height / fig.get_figheight() - 1))
+            logger.info(f"{new_height:5.2f} {new_height - fig.get_figheight():6.3f} {new_height / fig.get_figheight() - 1:6.1%}")
         # check early stopping
         if (
             (prec_mode == "abs" and np.abs(new_height - fig.get_figheight()) < prec)
             or (prec_mode == "rel" and np.abs(new_height / fig.get_figheight() - 1) < prec)
         ):
             if verbose:
-                logger.info("Early stopping with {}".format(fig.get_figheight()))
+                logger.info(f"Early stopping with {fig.get_figheight()}.")
             break
         # update figure height and recalculate layout
         fig.set_figheight(new_height)
@@ -121,17 +121,17 @@ def _execute_tight_layout_auto(fig, prec=0.01, max_iter=10, verbose=False):
 
     padding = _get_padding(fig)
     if verbose:
-        logger.info("{}".format(padding))
+        logger.info(padding)
     for _ in range(max_iter):
         # execute layout engine and compute new padding
         layout_engine.execute(fig)
         padding_new = _get_padding(fig)
         if verbose:
-            logger.info("{} {:6.3f}".format(padding_new, np.max(np.abs(padding - padding_new))))
+            logger.info(f"{padding_new} {np.max(np.abs(padding - padding_new)):6.3f}")
         # check early stopping
         if (np.abs(padding - padding_new) < prec).all():
             if verbose:
-                logger.info("Early stopping with {}.".format(padding_new))
+                logger.info(f"Early stopping with {padding_new}.")
             break
         # update previous padding
         padding = padding_new
@@ -606,7 +606,7 @@ class Plotter():
             return
         # ensure plots are named
         plots = [
-            plot if plot is None or isinstance(plot, tuple) else (plot, "plot{}".format(plot.number))
+            plot if plot is None or isinstance(plot, tuple) else (plot, f"plot{plot.number}")
             for plot in plots
         ]
         # define list of non-empty plots for simpler for-loops (aliasing plots)
@@ -620,7 +620,7 @@ class Plotter():
         elif figsize_unit == "cm":
             figsize_unit = 1 / 2.54
         else:
-            logger.warning("figsize_unit \"{}\" is unknown.".format(figsize_unit))
+            logger.warning(f"figsize_unit \"{figsize_unit}\" is unknown.")
 
         # set figure size specification
         if figsize is not None:
@@ -687,7 +687,7 @@ class Plotter():
             grid = widgets.GridspecLayout(
                 n_rows=int(np.ceil(len(plots)/show_ncols)),
                 n_columns=show_ncols,
-                width="{}in".format((grid_width+0.5)*show_ncols),
+                width=f"{(grid_width+0.5)*show_ncols}in",
             )
             for i, (fig, name) in enumerate(plots):
                 if fig is None:
@@ -699,7 +699,7 @@ class Plotter():
                     else:
                         display(fig)
                     display(widgets.Label(
-                        "{:3}: {}".format(fig.number, name),
+                        f"{fig.number:3}: {name}",
                         layout=dict(overflow="auto"),
                         style=dict(font_family="monospace", font_size="10pt"),
                     ))
@@ -731,23 +731,23 @@ class Plotter():
                     if save_format == "png":
                         filepath += ".png"
                         fig.savefig(filepath, **save_kw)
-                        msg = "Plot saved to \"{}\". Include in LaTeX with:".format(filepath)
+                        msg = f"Plot saved to \"{filepath}\". Include in LaTeX with:"
                         msg += r"\n\includegraphics[width=%s]{%s}" % (width_latex, name)
                     elif save_format == "pdf":
                         filepath += ".pdf"
                         fig.savefig(filepath, backend="pgf", **save_kw)
-                        msg = "Plot saved to \"{}\". Include in LaTeX with:".format(filepath)
+                        msg = f"Plot saved to \"{filepath}\". Include in LaTeX with:"
                         msg += r"\n\includegraphics[width=%s]{%s.pdf}" % (width_latex, name)
                     elif save_format == "pgf":
                         filepath += ".pgf"
                         fig.savefig(filepath, backend="pgf", **save_kw)
-                        msg = "Plot saved to \"{}\". Include in LaTeX with:".format(filepath)
+                        msg = f"Plot saved to \"{filepath}\". Include in LaTeX with:"
                         msg += r"\n\resizebox{%s}{!}{\input{%s.pgf}}" % (width_latex, name)
                     elif save_format == "tikz":
                         import tikzplotlib as tikz
                         filepath += ".tex"
                         tikz.save(filepath, axis_width=r"\tikzwidth", axis_height=r"\tikzheight", wrap=False, **save_kw)
-                        msg = "Plot saved to \"{}\". Include in LaTeX with:".format(filepath)
+                        msg = f"Plot saved to \"{filepath}\". Include in LaTeX with:"
                         msg += "\n" + "\n".join([
                             r"\begin{tikzpicture}",
                             r"    \def\tikzwidth{%s}",
@@ -887,4 +887,4 @@ class DynamicPlotter(Plotter):
             for subitem in item:
                 subitem.set_visible(visible)
         else:
-            logger.warning("Not able to change visibility of {}".format(item))
+            logger.warning(f"Not able to change visibility of {item}.")

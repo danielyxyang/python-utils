@@ -18,7 +18,7 @@ class LoopChecker():
     def __call__(self):
         self.counter = (self.counter + 1) % self.threshold
         if(self.counter == 0):
-            logger.warning("LoopChecker in \"{}\" reached threshold {}".format(self.location, self.threshold))
+            logger.warning(f"LoopChecker in \"{self.location}\" reached threshold {self.threshold}.")
 
 
 class LazyDict(UserDict):

@@ -25,7 +25,7 @@ class CheckboxList(widgets.VBox, widgets.widget_description.DescriptionWidget, w
             )
             checkbox_widget = widgets.HBox(
                 [checkbox, checkbox_label],
-                layout=dict(overflow="visible", padding="0 10px 0 10px", margin="0 0 0 {}px".format(len(option_path[:-1])*30)),
+                layout=dict(overflow="visible", padding="0 10px 0 10px", margin=f"0 0 0 {len(option_path[:-1])*30}px"),
             )
             # register handler to update widget value
             checkbox.observe(self.__update_value, names="value")

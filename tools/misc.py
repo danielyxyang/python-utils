@@ -1,10 +1,12 @@
 import json
+import logging
 import types
 from collections import UserDict
 from collections.abc import MutableMapping
 
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 class LoopChecker():
     """Class for checking loops on non-termination."""
@@ -16,7 +18,7 @@ class LoopChecker():
     def __call__(self):
         self.counter = (self.counter + 1) % self.threshold
         if(self.counter == 0):
-            print("WARNING: LoopChecker in \"{}\" reached threshold {}".format(self.location, self.threshold))
+            logger.warning("LoopChecker in \"{}\" reached threshold {}".format(self.location, self.threshold))
 
 
 class LazyDict(UserDict):

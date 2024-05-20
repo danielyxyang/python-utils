@@ -152,7 +152,7 @@ class OutputChecker:
                         # return output
                         return out
                     else:
-                        logger.warn(f"{name} has already been collected.")
+                        logger.warning(f"{name} has already been collected.")
                 elif self.phase == OutputChecker.VERIFY:
                     if name in self.outputs:
                         # verify output
@@ -162,18 +162,18 @@ class OutputChecker:
                         out_prev = OutputChecker._update_tensors(self.outputs[name], out)
                         return out_prev
                     else:
-                        logger.warn(f"{name} has not been collected.")
+                        logger.warning(f"{name} has not been collected.")
                 else:
-                    logger.warn(f"Unknown OutputChecker phase {self.phase}.")
+                    logger.warning(f"Unknown OutputChecker phase {self.phase}.")
             return out
         else:
-            logger.warn(f"Object of type {type(obj)} can not be checked, since it is not callable.")
+            logger.warning(f"Object of type {type(obj)} can not be checked, since it is not callable.")
             return obj
 
     @staticmethod
     def _update_tensors(out_prev, out):
         if type(out_prev) is not type(out):
-            logger.warn(f"Output with different types {type(out_prev)} and {type(out)}.")
+            logger.warning(f"Output with different types {type(out_prev)} and {type(out)}.")
             return out_prev
 
         if _IMPORTED_TORCH and isinstance(out_prev, torch.Tensor):
@@ -185,13 +185,13 @@ class OutputChecker:
                 list_or_tuple = type(out_prev)
                 return list_or_tuple(map(OutputChecker._update_tensors, out_prev, out))
             else:
-                logger.warn(f"Output of type {type(out_prev)} with different length {len(out_prev)} and {len(out)}.")
+                logger.warning(f"Output of type {type(out_prev)} with different length {len(out_prev)} and {len(out)}.")
                 return out_prev
         elif isinstance(out_prev, dict):
             if out_prev.keys() == out.keys():
                 return {key: OutputChecker._update_tensors(out_prev[key], out[key]) for key in out_prev}
             else:
-                logger.warn(f"Output of type {type(out_prev)} with different set of keys {list(out_prev.keys())} and {list(out.keys())}.")
+                logger.warning(f"Output of type {type(out_prev)} with different set of keys {list(out_prev.keys())} and {list(out.keys())}.")
                 return out_prev
         else:
             return out_prev
@@ -199,7 +199,7 @@ class OutputChecker:
     @staticmethod
     def diff(out1, out2):
         if type(out1) is not type(out2):
-            logger.warn(f"Output with different types {type(out1)} and {type(out2)}.")
+            logger.warning(f"Output with different types {type(out1)} and {type(out2)}.")
             return 0, 0, 0
 
         if isinstance(out1, np.ndarray):
@@ -213,17 +213,17 @@ class OutputChecker:
                 means, maxs, sums = zip(*[OutputChecker.diff(o1, o2) for o1, o2 in zip(out1, out2)])
                 return np.mean(means), np.max(maxs), np.sum(sums)
             else:
-                logger.warn(f"Output of type {type(out1)} with different length {len(out1)} and {len(out2)}.")
+                logger.warning(f"Output of type {type(out1)} with different length {len(out1)} and {len(out2)}.")
                 return 0, 0, 0
         elif isinstance(out1, dict):
             if out1.keys() == out2.keys():
                 means, maxs, sums = zip(*[OutputChecker.diff(out1[key], out2[key]) for key in out1])
                 return np.mean(means), np.max(maxs), np.sum(sums)
             else:
-                logger.warn(f"Output of type {type(out1)} with different set of keys {list(out1.keys())} and {list(out2.keys())}.")
+                logger.warning(f"Output of type {type(out1)} with different set of keys {list(out1.keys())} and {list(out2.keys())}.")
                 return 0, 0, 0
         else:
-            logger.warn(f"Output type {type(out1)} not supported.")
+            logger.warning(f"Output type {type(out1)} not supported.")
             return 0, 0, 0
 
 OUTPUT_CHECKER = OutputChecker()

@@ -1,8 +1,10 @@
 import contextlib
+import logging
 import time
 
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 class Timer():
     """Class for measuring execution time of one code section repeatedly."""
@@ -73,13 +75,13 @@ class TimeProfiler():
         if name is None:
             # simple profiling
             if self._start is None:
-                print("WARNING: profiler has not been started yet")
+                logger.warning("Profiler has not been started yet")
                 return
             self._end = time.perf_counter()
         else:
             # named profiling
             if name not in self._records:
-                print("WARNING: profiler has not been started for \"{}\" yet".format(name))
+                logger.warning("Profiler has not been started for \"{}\" yet".format(name))
                 return
             self._records[name]["end"] = time.perf_counter()
             self._records[name]["time"] += self.time(name)
@@ -89,13 +91,13 @@ class TimeProfiler():
         if name is None:
             # simple profiling
             if self._start is None or self._end is None:
-                print("WARNING: profiler has not recorded a time yet")
+                logger.warning("Profiler has not recorded a time yet")
                 return
             return self._end - self._start
         else:
             # named profiling
             if name not in self._records or self._records[name]["start"] is None or self._records[name]["end"] is None:
-                print("WARNING: profiler has not recorded a time for \"{}\" yet".format(name))
+                logger.warning("Profiler has not recorded a time for \"{}\" yet".format(name))
                 return
             return self._records[name]["end"] - self._records[name]["start"]
 
@@ -118,19 +120,20 @@ class TimeProfiler():
         if names is None:
             names = self._records.keys()
 
-        print("Profiling")
+        msg = "Profiling"
         max_length = np.max([len(name) for name in names])
         total = 0
         for name in names:
             time = self._records[name]["time"] if name in self._records else None
             info = self._records[name]["info"] if name in self._records else None
             total += time if time is not None else 0
-            print("  {:{}} {}{}".format(
+            msg += "\n  {:{}} {}{}".format(
                 "{}:".format(name), max_length + 1,
                 "{:4.2f}s".format(time) if time is not None else "{:4} ".format("-"),
                 " ({})".format(info) if info is not None else "",
-            ))
-        print("  {:{}} {}".format("Total:", max_length + 1, "{:4.2f}s".format(total)))
+            )
+        msg += "\n  {:{}} {}".format("Total:", max_length + 1, "{:4.2f}s".format(total))
+        logger.info(msg)
 
     @contextlib.contextmanager
     def cm(self, name=None, disjoint=True):

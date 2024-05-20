@@ -1,5 +1,8 @@
+import logging
+
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 def case_distinction(cases, **kwargs):
     """Evaluate list of cases by case distinction using np.select.
@@ -35,7 +38,7 @@ def intersect_functions(f1, f2, mode="left"):
     elif mode == "right":
         offset = 1
     else:
-        print("WARNING: unknown mode for intersecting two functions")
+        logger.warning(f"Unknown mode \"{mode}\" for intersecting two functions.")
     f1 = np.asarray(f1)
     f2 = np.asarray(f2)
     return np.nonzero(np.diff(np.sign(f1 - f2)))[0] + offset

@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import os
 
 import ipywidgets as widgets
@@ -11,6 +12,7 @@ from matplotlib.collections import PatchCollection
 
 from .plot_tools import FilterTicksLocator
 
+logger = logging.getLogger(__name__)
 
 def _call_set_f(set_f, arg):
     """Call function either with first argument or keyword arguments."""
@@ -19,7 +21,7 @@ def _call_set_f(set_f, arg):
 
 
 def _warn_incorrect_layout_engine(func, fig):
-    print("WARNING: {} does not support layout engine {}.".format(func.__name__, type(fig.get_layout_engine()).__name__))
+    logger.warning("{} does not support layout engine {}.".format(func.__name__, type(fig.get_layout_engine()).__name__))
 
 
 def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=False):
@@ -49,20 +51,20 @@ def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=Fa
     fig.set_figheight(50)
     layout_engine.execute(fig)
     if verbose:
-        print("{:5.2f}".format(fig.get_figheight()))
+        logger.info("{:5.2f}".format(fig.get_figheight()))
     # iteratively update figure height until layout engine converges
     for _ in range(max_iter):
         # compute new figure height
         new_height = fig.get_tightbbox().height + 2 * h_pad_inch
         if verbose:
-            print("{:5.2f} {:6.3f} {:6.1%}".format(new_height, new_height - fig.get_figheight(), new_height / fig.get_figheight() - 1))
+            logger.info("{:5.2f} {:6.3f} {:6.1%}".format(new_height, new_height - fig.get_figheight(), new_height / fig.get_figheight() - 1))
         # check early stopping
         if (
             (prec_mode == "abs" and np.abs(new_height - fig.get_figheight()) < prec)
             or (prec_mode == "rel" and np.abs(new_height / fig.get_figheight() - 1) < prec)
         ):
             if verbose:
-                print("Early stopping with", fig.get_figheight())
+                logger.info("Early stopping with {}".format(fig.get_figheight()))
             break
         # update figure height and recalculate layout
         fig.set_figheight(new_height)
@@ -119,17 +121,17 @@ def _execute_tight_layout_auto(fig, prec=0.01, max_iter=10, verbose=False):
 
     padding = _get_padding(fig)
     if verbose:
-        print("{}".format(padding))
+        logger.info("{}".format(padding))
     for _ in range(max_iter):
         # execute layout engine and compute new padding
         layout_engine.execute(fig)
         padding_new = _get_padding(fig)
         if verbose:
-            print("{} {:6.3f}".format(padding_new, np.max(np.abs(padding - padding_new))))
+            logger.info("{} {:6.3f}".format(padding_new, np.max(np.abs(padding - padding_new))))
         # check early stopping
         if (np.abs(padding - padding_new) < prec).all():
             if verbose:
-                print("Early stopping with", padding_new)
+                logger.info("Early stopping with {}.".format(padding_new))
             break
         # update previous padding
         padding = padding_new
@@ -225,8 +227,9 @@ class Plotter():
             # enable interactive plots on Colab
             # https://matplotlib.org/ipympl/installing.html#google-colab
             if Plotter.interactive and Plotter.is_colab:
-                from google.colab import \
-                    output  # pyright: ignore[reportMissingImports]
+                from google.colab import (  # pyright: ignore[reportMissingImports]
+                    output,
+                )
                 output.enable_custom_widget_manager()
 
         # prevent figures to be displayed without calling plt.show() or display()
@@ -617,7 +620,7 @@ class Plotter():
         elif figsize_unit == "cm":
             figsize_unit = 1 / 2.54
         else:
-            print("WARNING: figsize_unit \"{}\" is unknown.".format(figsize_unit))
+            logger.warning("figsize_unit \"{}\" is unknown.".format(figsize_unit))
 
         # set figure size specification
         if figsize is not None:
@@ -653,13 +656,13 @@ class Plotter():
         # set consistent sizes (e.g. for side-by-side plots)
         if consistent_size:
             if figsize_spec["spec"] != "width_ratio":
-                print("WARNING: consistent_size only works with specified figure width and axis ratio.")
+                logger.warning("consistent_size only works with specified figure width and axis ratio.")
             # execute tight layout to obtain proper subplot parameters
             for fig, _ in plots_filtered:
                 if isinstance(fig.get_layout_engine(), mpl.layout_engine.TightLayoutEngine):
                     _execute_tight_layout_auto(fig)
                 else:
-                    print("WARNING: consistent_size only works with tight layout engine.")
+                    logger.warning("consistent_size only works with tight layout engine.")
             # compute max figure height
             height_max = np.max([fig.get_figheight() for fig, _ in plots_filtered])
             # compute max required padding for title, labels, ticks, etc.
@@ -728,32 +731,33 @@ class Plotter():
                     if save_format == "png":
                         filepath += ".png"
                         fig.savefig(filepath, **save_kw)
-                        print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
-                        print(r"\includegraphics[width=%s]{%s}" % (width_latex, name))
+                        msg = "Plot saved to \"{}\". Include in LaTeX with:".format(filepath)
+                        msg += r"\n\includegraphics[width=%s]{%s}" % (width_latex, name)
                     elif save_format == "pdf":
                         filepath += ".pdf"
                         fig.savefig(filepath, backend="pgf", **save_kw)
-                        print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
-                        print(r"\includegraphics[width=%s]{%s.pdf}" % (width_latex, name))
+                        msg = "Plot saved to \"{}\". Include in LaTeX with:".format(filepath)
+                        msg += r"\n\includegraphics[width=%s]{%s.pdf}" % (width_latex, name)
                     elif save_format == "pgf":
                         filepath += ".pgf"
                         fig.savefig(filepath, backend="pgf", **save_kw)
-                        print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
-                        print(r"\resizebox{%s}{!}{\input{%s.pgf}}" % (width_latex, name))
+                        msg = "Plot saved to \"{}\". Include in LaTeX with:".format(filepath)
+                        msg += r"\n\resizebox{%s}{!}{\input{%s.pgf}}" % (width_latex, name)
                     elif save_format == "tikz":
                         import tikzplotlib as tikz
                         filepath += ".tex"
                         tikz.save(filepath, axis_width=r"\tikzwidth", axis_height=r"\tikzheight", wrap=False, **save_kw)
-                        print("Plot saved to \"{}\". Include in LaTeX with:".format(filepath))
-                        print("\n".join([
+                        msg = "Plot saved to \"{}\". Include in LaTeX with:".format(filepath)
+                        msg += "\n" + "\n".join([
                             r"\begin{tikzpicture}",
                             r"    \def\tikzwidth{%s}",
                             r"    \def\tikzheight{%s}",
                             r"    \input{%s}",
                             r"\end{tikzpicture}",
-                        ]) % (width_latex, height_latex, name))
+                        ]) % (width_latex, height_latex, name)
+                    logger.info(msg)
             else:
-                print("WARNING: save_format \"{}\" unknown.".format(save_format))
+                logger.warning(f"save_format \"{save_format}\" unknown.")
 
     # UTILITY FUNCTIONS
 
@@ -883,4 +887,4 @@ class DynamicPlotter(Plotter):
             for subitem in item:
                 subitem.set_visible(visible)
         else:
-            print("WARNING: not able to change visibility of {}".format(item))
+            logger.warning("Not able to change visibility of {}".format(item))

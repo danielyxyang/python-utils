@@ -1,7 +1,9 @@
+import logging
 import os
 
 from IPython.display import Image, display
 
+logger = logging.getLogger(__name__)
 
 class GIFSaver():
     def __init__(self, output, filename, dpi=150):
@@ -52,4 +54,4 @@ class GIFSaver():
         # display gif
         if show:
             display(Image(open(self.filepath_gif(), "rb").read(), width=400))
-        print("GIF saved to \"{}\".".format(self.filepath_gif()))
+        logger.info(f"GIF saved to \"{self.filepath_gif()}\".")

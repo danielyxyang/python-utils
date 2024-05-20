@@ -2,3 +2,4 @@ ipython
 ipywidgets
 matplotlib
 numpy
+pandas

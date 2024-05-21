@@ -5,12 +5,12 @@ from IPython.display import display
 
 logger = logging.getLogger(__name__)
 
-def display_table(table, columns=None, sort=None, html=True, align=None):
+def display_table(table, sort=None, columns=None, html=True, align=None):
     df = pd.DataFrame(table)
-    if columns is not None:
-        df = df[columns]
     if sort is not None:
         df = df.sort_values(sort)
+    if columns is not None:
+        df = df[columns]
     if html:
         df_style = df.style
     if align is not None:

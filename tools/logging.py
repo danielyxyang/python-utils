@@ -1,7 +1,9 @@
 import contextlib
 import logging
+import re
 import sys
 
+logger = logging.getLogger(__name__)
 
 def setup_logging(level=logging.INFO, format=None, dateformat=None, other_loggers=[]):
     if format is None:
@@ -35,3 +37,42 @@ def logging_disabled(level=logging.CRITICAL):
         yield
     finally:
         logging.disable(prev_root_level)
+
+def parse_logs(path, patterns, repeat=False):
+    # load log file
+    with open(path) as f:
+        logs = f.read()
+
+    # load patterns
+    patterns = [(pattern_name, re.compile(pattern, re.MULTILINE)) for pattern_name, pattern in patterns.items()]
+
+    # find matches
+    matches = [{}]
+    next_search_pos = 0
+    next_pattern_index = 0
+    while next_search_pos < len(logs):
+        # search for pattern
+        pattern_name, pattern = patterns[next_pattern_index]
+        match = pattern.search(logs, pos=next_search_pos)
+        if match is None:
+            break
+        # add match
+        matches[-1][pattern_name] = match.group(1) if len(match.groups()) == 1 else match.groups()
+        # move to next search position
+        next_search_pos = match.end()
+        # move to next pattern
+        next_pattern_index += 1
+        if next_pattern_index == len(patterns):
+            if not repeat:
+                break
+            # cycle through patterns
+            matches.append({})
+            next_pattern_index = 0
+
+    if len(matches[-1]) == 0 and len(matches) > 1:
+        matches.pop(-1)
+
+    if len(matches[-1]) < len(patterns):
+        logger.warning(f"The following match in \"{path}\" is incomplete: {matches[-1]}")
+
+    return matches if repeat else matches[0]

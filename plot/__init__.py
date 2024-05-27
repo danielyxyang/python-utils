@@ -1,3 +1,3 @@
 from .gif_saver import GIFSaver
-from .plot_tools import FilterTicksLocator, MultipleTicks, get_figsize
+from .plot_tools import FilterTicksLocator, MultipleTicks, get_figlayout
 from .plotter import Plotter, DynamicPlotter

@@ -12,7 +12,7 @@ def display_table(table, sort=None, index=None, columns=None, mode="html", align
     if index is not None:
         df = df.set_index(index)
     if columns is not None:
-        df = df[columns]
+        df = df.reindex(columns, axis="columns")
     if mode == "html":
         df_style = df.style
     if align is not None:

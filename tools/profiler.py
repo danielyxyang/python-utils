@@ -136,7 +136,7 @@ class TimeProfiler():
         logger.info(msg)
 
     @contextlib.contextmanager
-    def cm(self, name=None, disjoint=True):
+    def __call__(self, name=None, disjoint=True):
         """Create context manager for profiling.
 
         Args:

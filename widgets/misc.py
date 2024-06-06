@@ -1,11 +1,11 @@
 import logging
 
 import pandas as pd
-from IPython.display import display
+from IPython.display import HTML, display
 
 logger = logging.getLogger(__name__)
 
-def display_table(table, sort=None, index=None, columns=None, mode="html", align=None):
+def display_table(table, sort=None, index=None, columns=None, mode="html", html_align=None, html_height=None):
     df = pd.DataFrame(table)
     if sort is not None:
         df = df.sort_values(sort)
@@ -15,11 +15,14 @@ def display_table(table, sort=None, index=None, columns=None, mode="html", align
         df = df.reindex(columns, axis="columns")
     if mode == "html":
         df_style = df.style
-    if align is not None:
+    if html_align is not None:
         if mode == "html":
-            df_style = df_style.set_properties(**{"text-align": align}).set_table_styles([dict(selector="th", props=[("text-align", align)])])
+            df_style = df_style.set_properties(**{"text-align": html_align}).set_table_styles([dict(selector="th", props=f"text-align: {html_align}")])
         else:
             logger.warning("Aligning columns is only supported in mode \"html\".")
+    if html_height is not None:
+        if mode != "html":
+            logger.warning("Limiting height of table is only supported in mode \"html\".")
     with pd.option_context(
         "display.expand_frame_repr", False,
         "display.max_rows", None,
@@ -27,7 +30,10 @@ def display_table(table, sort=None, index=None, columns=None, mode="html", align
         "display.max_colwidth", None,
     ):
         if mode == "html":
-            display(df_style)
+            if html_height is not None:
+                display(HTML(f"<div style='height: {html_height}; overflow: auto;'>{df_style.to_html()}</div>"))
+            else:
+                display(df_style)
         elif mode == "csv":
             print(df.to_csv(index=False, sep="\t"))
         else:

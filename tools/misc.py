@@ -2,7 +2,7 @@ import json
 import logging
 import types
 from collections import UserDict
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 
 import numpy as np
 
@@ -29,14 +29,6 @@ class LazyDict(UserDict):
         return self.data[key]
 
 
-def _flatten_dict_gen(d, parent_key, sep):
-    for key, value in d.items():
-        new_key = parent_key + sep + key if parent_key is not None else key
-        if isinstance(value, MutableMapping):
-            yield from flatten_dict(value, new_key, sep=sep).items()
-        else:
-            yield new_key, value
-
 def flatten_dict(d, parent_key=None, sep='/'):
     """Flatten a dict with the given separator and under the given parent_key.
 
@@ -45,7 +37,30 @@ def flatten_dict(d, parent_key=None, sep='/'):
     References:
         [1] https://www.freecodecamp.org/news/how-to-flatten-a-dictionary-in-python-in-4-different-ways/
     """
+    def _flatten_dict_gen(d, parent_key, sep):
+        for key, value in d.items():
+            new_key = parent_key + sep + key if parent_key is not None else key
+            if isinstance(value, MutableMapping):
+                yield from flatten_dict(value, new_key, sep=sep).items()
+            else:
+                yield new_key, value
     return dict(_flatten_dict_gen(d, parent_key, sep))
+
+
+def update_dict(d, u):
+    """Update a nested dict with the given nested dict.
+
+    The code is taken from [1].
+
+    References:
+        [1] https://stackoverflow.com/a/3233356
+    """
+    for k, v in u.items():
+        if isinstance(v, Mapping):
+            d[k] = update_dict(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
 
 
 def build_json_encoder(encoders=[]):

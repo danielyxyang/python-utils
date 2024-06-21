@@ -47,7 +47,7 @@ def parse_logs(path, patterns, repeat=False):
     patterns = [(pattern_name, re.compile(pattern, re.MULTILINE)) for pattern_name, pattern in patterns.items()]
 
     # find matches
-    matches = [{}]
+    matches = [{pattern_name: None for pattern_name, _ in patterns}]
     next_search_pos = 0
     next_pattern_index = 0
     while next_search_pos < len(logs):
@@ -63,16 +63,18 @@ def parse_logs(path, patterns, repeat=False):
         # move to next pattern
         next_pattern_index += 1
         if next_pattern_index == len(patterns):
-            if not repeat:
+            if repeat:
+                # cycle through patterns
+                matches.append({pattern_name: None for pattern_name, _ in patterns})
+                next_pattern_index = 0
+            else:
                 break
-            # cycle through patterns
-            matches.append({})
-            next_pattern_index = 0
 
-    if len(matches[-1]) == 0 and len(matches) > 1:
+    if repeat and next_pattern_index == 0 and len(matches) > 1:
         matches.pop(-1)
+        next_pattern_index = len(patterns)
 
-    if len(matches[-1]) < len(patterns):
+    if next_pattern_index < len(patterns):
         logger.warning(f"The following match in \"{path}\" is incomplete: {matches[-1]}")
 
     return matches if repeat else matches[0]

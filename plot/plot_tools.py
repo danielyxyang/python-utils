@@ -155,8 +155,8 @@ def get_figlayout(ncols=1, nrows=1, width=7, height=None, ratio=(1, 1)):
         ncols (int, optional): The number of columns in the figure. Defaults to 1.
         nrows (int, optional): The number of rows in the figure. Defaults to 1.
         width (int, optional): The width of each axes. Defaults to 7.
-        height (_type_, optional): The height of each axes. Defaults to None.
-        ratio (tuple, optional): _description_. Defaults to (1, 1).
+        height (int, optional): The height of each axes. Defaults to None.
+        ratio (tuple, optional): The (height, width) ratio. Defaults to (1, 1).
 
     Returns:
         dict: The keyword arguments describing the figure layout (ncols, nrows)

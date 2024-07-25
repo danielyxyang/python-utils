@@ -29,6 +29,26 @@ class LazyDict(UserDict):
         return self.data[key]
 
 
+def to_dict(obj):
+    """Convert an object into a nested dictionary.
+
+    The code is taken from [1].
+
+    References:
+        [1] https://stackoverflow.com/a/22679824
+    """
+    if isinstance(obj, str):
+        return obj
+    elif hasattr(obj, "__dict__"):
+        return to_dict(vars(obj))
+    elif isinstance(obj, dict):
+        return {key: to_dict(val) for key, val in obj.items()}
+    elif isinstance(obj, list):
+        return [to_dict(val) for val in obj]
+    else:
+        return obj
+
+
 def flatten_dict(d, parent_key=None, sep='/'):
     """Flatten a dict with the given separator and under the given parent_key.
 

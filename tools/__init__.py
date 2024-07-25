@@ -5,6 +5,7 @@ from .misc import (
     LoopChecker,
     build_json_encoder,
     flatten_dict,
+    to_dict,
     update_dict,
 )
 from .profiler import TimeProfiler, Timer

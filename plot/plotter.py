@@ -189,6 +189,8 @@ class Plotter():
     # mapping for shorter keys usable as keyword arguments
     _FONTSIZE_KEYS = {
         "base":   "font.size",
+        "figtitle": "figure.titlesize",
+        "figlabel": "figure.labelsize",
         "title":  "axes.titlesize",
         "label":  "axes.labelsize",
         "xtick":  "xtick.labelsize",
@@ -774,6 +776,12 @@ class Plotter():
         if Plotter.interactive and Plotter.is_colab:
             html_hack = widgets.HTML("<style> .jupyter-matplotlib-figure { position: relative; } </style>")
             display(html_hack)
+
+    @staticmethod
+    def display_css(css):
+        """Display CSS for more control on ipywidgets."""
+        html_hack = widgets.HTML(f"<style> {css} </style>")
+        display(html_hack)
 
     @staticmethod
     def print_lim(fig_index, prec=2):

@@ -24,6 +24,21 @@ def _warn_incorrect_layout_engine(func, fig):
     logger.warning(f"{func.__name__} does not support layout engine {type(fig.get_layout_engine()).__name__}.")
 
 
+def _get_figheight_tight(fig):
+    layout_engine = fig.get_layout_engine()
+    if isinstance(layout_engine, mpl.layout_engine.TightLayoutEngine):
+        # compute padding in inches for tight layout engine
+        # https://github.com/matplotlib/matplotlib/blob/v3.7.1/lib/matplotlib/_tight_layout.py#L50
+        font_size_inch = mpl.font_manager.FontProperties(size=mpl.rcParams["font.size"]).get_size_in_points() / 72
+        h_pad_inch = layout_engine.get()["pad"] * font_size_inch
+    elif isinstance(layout_engine, mpl.layout_engine.ConstrainedLayoutEngine):
+        # compute padding in inches for constrained layout engine
+        h_pad_inch = layout_engine.get()["h_pad"]
+    else:
+        _warn_incorrect_layout_engine(_set_figheight_auto, fig)
+    return fig.get_tightbbox().height + 2 * h_pad_inch
+
+
 def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=False):
     """Automatically sets figure height tightest possible while adhering to padding.
 
@@ -34,13 +49,8 @@ def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=Fa
     """
     layout_engine = fig.get_layout_engine()
     if isinstance(layout_engine, mpl.layout_engine.TightLayoutEngine):
-        # compute padding in inches for tight layout engine
-        # https://github.com/matplotlib/matplotlib/blob/v3.7.1/lib/matplotlib/_tight_layout.py#L50
-        font_size_inch = mpl.font_manager.FontProperties(size=mpl.rcParams["font.size"]).get_size_in_points() / 72
-        h_pad_inch = layout_engine.get()["pad"] * font_size_inch
+        pass
     elif isinstance(layout_engine, mpl.layout_engine.ConstrainedLayoutEngine):
-        # compute padding in inches for constrained layout engine
-        h_pad_inch = layout_engine.get()["h_pad"]
         # switch to compressed constrained layout engine to remove white space (faster convergence)
         layout_engine._compress = True
         layout_engine.execute(fig)
@@ -55,7 +65,7 @@ def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=Fa
     # iteratively update figure height until layout engine converges
     for _ in range(max_iter):
         # compute new figure height
-        new_height = fig.get_tightbbox().height + 2 * h_pad_inch
+        new_height = _get_figheight_tight(fig)
         if verbose:
             logger.info(f"{new_height:5.2f} {new_height - fig.get_figheight():6.3f} {new_height / fig.get_figheight() - 1:6.1%}")
         # check early stopping
@@ -87,7 +97,7 @@ def _get_padding(fig):
     ])
 
 
-def _set_padding(fig, left, bottom, right, top):
+def _set_padding(fig, left=None, bottom=None, right=None, top=None):
     """Set the figure's padding in inches.
 
     This function relies on the subplot parameters and therefore only works with
@@ -96,10 +106,10 @@ def _set_padding(fig, left, bottom, right, top):
     if isinstance(fig.get_layout_engine(), mpl.layout_engine.ConstrainedLayoutEngine):
         _warn_incorrect_layout_engine(_set_padding, fig)
     fig.subplots_adjust(
-        left=left / fig.get_figwidth(),
-        bottom=bottom / fig.get_figheight(),
-        right=1 - right / fig.get_figwidth(),
-        top=1 - top / fig.get_figheight(),
+        left=left / fig.get_figwidth() if left is not None else None,
+        bottom=bottom / fig.get_figheight() if bottom is not None else None,
+        right=1 - right / fig.get_figwidth() if right is not None else None,
+        top=1 - top / fig.get_figheight() if top is not None else None,
     )
 
 
@@ -546,17 +556,20 @@ class Plotter():
     @staticmethod
     def finish(
         plots,
-        # parameters for figure size
+        # parameters for single figure
         figsize=None,
-        figwidth=1, axratio=None,
+        figwidth=1,
+        axratio=None,
         figsize_unit="base",
-        consistent_size=False,
-        # parameters for other properties
         set={},
-        # parameters for displaying figures
-        show=True, show_ncols=4,
-        # parameters for saving figures
-        save=False, save_format=None, save_kw={},
+        # parameters for multiple figures
+        grid_ncols=4,
+        consistent_size=False,
+        # parameters for showing and saving figures
+        show=True,
+        save=False,
+        save_format=None,
+        save_kw={},
     ):
         """Finish plots by displaying and/or saving them.
 
@@ -589,14 +602,15 @@ class Plotter():
             figsize_unit ("base", "inch" or "cm"): The unit in which the width
                 and/or height of the figure are specified. The size can be
                 relative to Plotter.basewidth ("base"). Defaults to "base".
+            grid_ncols (int, optional): Number of columns of the grid in which
+                the list of plots are displayed. This grid also determines the
+                plots for which a consistent size is required. Defaults to 4.
             consistent_size (bool, optional): Flag whether to consistently size
                 the Axes across different figures by unifying their side
                 paddings. Defaults to False.
             set (dict): Keyword arguments passed to `set`. Defaults to {}.
             show (bool, optional): Flag whether to display the plots. Defaults
                 to True.
-            show_ncols (int, optional): Number of columns for displaying the
-                list of plots. Defaults to 4.
             save (bool, optional): Flag whether to save the plots. Defaults to
                 False.
             save_format (str, optional): The format in which the plots should be
@@ -659,29 +673,43 @@ class Plotter():
             # set properties of axes
             Plotter.set(fig.axes, **set)
 
-        # set consistent sizes (e.g. for side-by-side plots)
+        # compute number of rows of the grid
+        grid_nrows = int(np.ceil(len(plots) / grid_ncols))
+
+        # set consistent sizes (e.g. for grid-placed plots)
         if consistent_size:
             if figsize_spec["spec"] != "width_ratio":
                 logger.warning("consistent_size only works with specified figure width and axis ratio.")
-            # execute tight layout to obtain proper subplot parameters
+            # execute tight layout to obtain proper paddings
             for fig, _ in plots_filtered:
                 if isinstance(fig.get_layout_engine(), mpl.layout_engine.TightLayoutEngine):
                     _execute_tight_layout_auto(fig)
                 else:
                     logger.warning("consistent_size only works with tight layout engine.")
-            # compute max figure height
-            height_max = np.max([fig.get_figheight() for fig, _ in plots_filtered])
-            # compute max required padding for title, labels, ticks, etc.
-            l_max, b_max, r_max, t_max = np.max([_get_padding(fig) for fig, _ in plots_filtered], axis=0)
-            # set max figure height and required padding for all plots
-            for fig, _ in plots_filtered:
-                # set max figure height
+            # compute paddings for each figure
+            paddings = np.zeros((grid_nrows, grid_ncols, 4))
+            for i, (fig, _) in enumerate(plots_filtered):
+                paddings[i // grid_ncols, i % grid_ncols] = _get_padding(fig)
+            # set consistent horizontal padding (since it can impacts height of width_ratio-sized figures)
+            for i, (fig, _) in enumerate(plots_filtered):
+                l_max, _, r_max, _ = np.max(paddings, axis=(0, 1)) # same horizontal padding for all figures
+                _set_padding(fig, left=l_max, right=r_max)
+            # compute tight height for each figure
+            heights = np.zeros((grid_nrows, grid_ncols))
+            for i, (fig, _) in enumerate(plots_filtered):
+                heights[i // grid_ncols, i % grid_ncols] = _get_figheight_tight(fig)
+            # set consistent height and padding
+            for i, (fig, _) in enumerate(plots_filtered):
+                # set consistent figure height
+                height_max = np.max(heights[i // grid_ncols, :]) # same height per row
                 fig.set_figheight(height_max)
                 # recalculate layout and then turn off tight layout engine (otherwise paddings are changed again)
                 fig.get_layout_engine().execute(fig)
                 fig.set_layout_engine("none")
-                # set max required padding
-                _set_padding(fig, left=l_max, bottom=b_max, right=r_max, top=t_max)
+                # set consistent padding
+                l_max, _, r_max, _ = np.max(paddings[:, :], axis=(0, 1)) # same horizontal padding for all figures
+                _, b_max, _, t_max = np.max(paddings[i // grid_ncols, :], axis=0) # same vertical padding per row
+                _set_padding(fig, left=l_max, right=r_max, bottom=b_max, top=t_max)
 
         # show figures
         if show or Plotter.save_always:
@@ -691,9 +719,9 @@ class Plotter():
             else:
                 grid_width = np.max([fig.get_figwidth() for fig, _ in plots_filtered])
             grid = widgets.GridspecLayout(
-                n_rows=int(np.ceil(len(plots)/show_ncols)),
-                n_columns=show_ncols,
-                width=f"{(grid_width+0.5)*show_ncols}in",
+                n_rows=grid_nrows,
+                n_columns=grid_ncols,
+                width=f"{(grid_width + 0.5) * grid_ncols}in",
             )
             for i, (fig, name) in enumerate(plots):
                 if fig is None:
@@ -709,7 +737,7 @@ class Plotter():
                         layout=dict(overflow="auto"),
                         style=dict(font_family="monospace", font_size="10pt"),
                     ))
-                grid[i // show_ncols, i % show_ncols] = out
+                grid[i // grid_ncols, i % grid_ncols] = out
             # display grid of figures
             Plotter.display_html_hack()
             display(grid)

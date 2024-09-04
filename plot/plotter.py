@@ -181,6 +181,7 @@ class Plotter():
     is_colab = False
 
     basewidth = 6 # inches
+    latex = False
     save_dir = "."
     save_format = "png"
     save_always = False
@@ -285,6 +286,7 @@ class Plotter():
             [3] https://www.overleaf.com/learn/latex/Lengths_in_LaTeX
         """
         if basewidth is not None:   Plotter.basewidth = basewidth
+        if latex is not None:       Plotter.latex = latex
         if save_dir is not None:    Plotter.save_dir = save_dir
         if save_format is not None: Plotter.save_format = save_format
         if save_always is not None: Plotter.save_always = save_always
@@ -346,6 +348,7 @@ class Plotter():
             # save parameters of Plotter
             prev = (
                 Plotter.basewidth,
+                Plotter.latex,
                 Plotter.save_dir,
                 Plotter.save_format,
                 Plotter.save_always,
@@ -359,6 +362,7 @@ class Plotter():
             # restore parameters of Plotter
             (
                 Plotter.basewidth,
+                Plotter.latex,
                 Plotter.save_dir,
                 Plotter.save_format,
                 Plotter.save_always,
@@ -735,7 +739,10 @@ class Plotter():
                         msg += r"\n\includegraphics[width=%s]{%s}" % (width_latex, name)
                     elif save_format == "pdf":
                         filepath += ".pdf"
-                        fig.savefig(filepath, backend="pgf", **save_kw)
+                        if Plotter.latex:
+                            fig.savefig(filepath, backend="pgf", **save_kw)
+                        else:
+                            fig.savefig(filepath, **save_kw)
                         msg = f"Plot saved to \"{filepath}\". Include in LaTeX with:"
                         msg += r"\n\includegraphics[width=%s]{%s.pdf}" % (width_latex, name)
                     elif save_format == "pgf":

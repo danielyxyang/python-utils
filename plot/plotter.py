@@ -658,7 +658,7 @@ class Plotter():
         else:
             figsize_spec = dict(spec=None)
 
-        # set figure size and axis properties
+        # set figure size, axis properties and layout
         for fig, _ in plots_filtered:
             # set figure size
             if figsize_spec["spec"] == "width_height":
@@ -670,21 +670,24 @@ class Plotter():
                     axis.set_box_aspect(figsize_spec["ratio"])
                 fig.set_figwidth(figsize_spec["width"])
                 _set_figheight_auto(fig)
+
             # set properties of axes
             Plotter.set(fig.axes, **set)
+
+            # execute tight layout iterately to obtain proper layout
+            if isinstance(fig.get_layout_engine(), mpl.layout_engine.TightLayoutEngine):
+                _execute_tight_layout_auto(fig)
 
         # compute number of rows of the grid
         grid_nrows = int(np.ceil(len(plots) / grid_ncols))
 
         # set consistent sizes (e.g. for grid-placed plots)
         if consistent_size:
+            # check requirements
             if figsize_spec["spec"] != "width_ratio":
                 logger.warning("consistent_size only works with specified figure width and axis ratio.")
-            # execute tight layout to obtain proper paddings
             for fig, _ in plots_filtered:
-                if isinstance(fig.get_layout_engine(), mpl.layout_engine.TightLayoutEngine):
-                    _execute_tight_layout_auto(fig)
-                else:
+                if not isinstance(fig.get_layout_engine(), mpl.layout_engine.TightLayoutEngine):
                     logger.warning("consistent_size only works with tight layout engine.")
             # compute paddings for each figure
             paddings = np.zeros((grid_nrows, grid_ncols, 4))

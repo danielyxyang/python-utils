@@ -1,5 +1,7 @@
 import contextlib
+import glob
 import logging
+import os
 import re
 import sys
 
@@ -38,34 +40,27 @@ def logging_disabled(level=logging.CRITICAL):
     finally:
         logging.disable(prev_root_level)
 
-def parse_logs(path, patterns, repeat=False):
+def parse_log(path, patterns, transform={}, repeat=False):
     """Parse log files based on the given list of patterns.
 
     Examples:
         Parsing basic log file
         ```
+        duration = lambda s: datetime.strptime(s, "%H:%M:%S") - datetime(1900, 1, 1)
+        timestamp = lambda s: datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
         log = parse_logs("path/to/file.log", {
-            "int":       r"An integer:  (\d+)",
-            "float":     r"A float:     (\d+(?:\.\d*)?)",
-            "duration":  r"A duration:  ([0-9\:]+)",
-            "timestamp": r"A timestamp: ([0-9\:\- ]+)",
+            "string":    (r"A string:    (.+)", None),
+            "int":       (r"An integer:  (\d+)", int),
+            "float":     (r"A float:     (\d+(?:\.\d*)?)", float),
+            "duration":  (r"A duration:  ([0-9\:]+)", duration),
+            "timestamp": (r"A timestamp: ([0-9\:\- ]+)", timestamp),
         })
-        log["duration"] = datetime.strptime(log["duration"], "%H:%M:%S") - datetime(1900, 1, 1)
-        log["timestamp"] = datetime.strptime(log["timestamp"], "%Y-%m-%d %H:%M:%S")
-        ```
-
-        Parsing multiple log files
-        ```
-        from utils_ext.widgets import display_table
-
-        logs = [parse_logs(path, ...) for path in sorted(glob.glob("path/to/*.log"))]
-        logs = pd.DataFrame(logs)
-        display_table(logs_grouped)
         ```
 
     Args:
         path (str): The path to the log file.
-        patterns (dict): The dictionary mapping pattern name to a regex string.
+        patterns (dict): The dictionary mapping pattern name to a tuple with the
+            regex string and the function used to transform the parsed value.
         repeat (bool, optional): The flag whether the log should be repeatedly
             parsed for the given patterns or not. Defaults to False.
 
@@ -79,7 +74,13 @@ def parse_logs(path, patterns, repeat=False):
         logs = f.read()
 
     # load patterns
-    patterns = [(pattern_name, re.compile(pattern, re.MULTILINE)) for pattern_name, pattern in patterns.items()]
+    patterns = [
+        (
+            pattern_name,
+            (re.compile(pattern, re.MULTILINE), transform if transform is not None else (lambda s: s)),
+        )
+        for pattern_name, (pattern, transform) in patterns.items()
+    ]
 
     # find matches
     matches = [{pattern_name: None for pattern_name, _ in patterns}]
@@ -87,12 +88,15 @@ def parse_logs(path, patterns, repeat=False):
     next_pattern_index = 0
     while next_search_pos < len(logs):
         # search for pattern
-        pattern_name, pattern = patterns[next_pattern_index]
+        pattern_name, (pattern, transform) = patterns[next_pattern_index]
         match = pattern.search(logs, pos=next_search_pos)
         if match is None:
             break
         # add match
-        matches[-1][pattern_name] = match.group(1) if len(match.groups()) == 1 else match.groups()
+        if len(match.groups()) == 1:
+            matches[-1][pattern_name] = transform(match.group(1))
+        else:
+            matches[-1][pattern_name] = transform(match.groups())
         # move to next search position
         next_search_pos = match.end()
         # move to next pattern
@@ -113,3 +117,56 @@ def parse_logs(path, patterns, repeat=False):
         logger.warning(f"The following match in \"{path}\" is incomplete: {matches[-1]}")
 
     return matches if repeat else matches[0]
+
+def parse_logs(path, patterns, repeat=False, path_transform=None):
+    """Parse multiple log files based on the given list of patterns.
+
+    Examples:
+        Parsing and aggregating multiple log files
+        ```
+        logs = parse_logs(
+            "path/to/*.log",
+            patterns={
+                "string":    (r"A string:    (.+)", None),
+                "int":       (r"An integer:  (\d+)", int),
+                "float":     (r"A float:     (\d+(?:\.\d*)?)", float),
+                "duration":  (r"A duration:  ([0-9\:]+)", duration),
+                "timestamp": (r"A timestamp: ([0-9\:\- ]+)", timestamp),
+            },
+            repeat=True,
+            path_transform=os.path.basename,
+        )
+        logs = pd.DataFrame(logs)
+        logs = logs.groupby("path").aggregate({
+            "string":   ("string", "first"),
+            "int":      ("int", "sum"),
+            "float":    ("float", "mean"),
+            "duration": ("duration", "max"),
+        })
+        display(logs)
+        ```
+
+    Args:
+        path (str): See parse_log.
+        patterns (dict): See parse_log.
+        repeat (bool, optional): See parse_log. Defaults to False.
+        path_transform (function, optional): The function used to transform the
+            path of the log file. Defaults to None.
+
+    Returns:
+        list of dicts: See parse_log.
+    """
+    if path_transform is None:
+        path_transform = lambda path: path
+
+    logs = []
+    for path in sorted(glob.glob(str(path))):
+        log = parse_log(path, patterns, repeat=repeat)
+        if repeat:
+            for l in log:
+                l["path"] = path_transform(path)
+            logs += log
+        else:
+            log["path"] = path_transform(path)
+            logs.append(log)
+    return logs

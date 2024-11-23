@@ -51,7 +51,7 @@ def parse_log(path, patterns, transform={}, repeat=False):
         log = parse_logs("path/to/file.log", {
             "string":    (r"A string:    (.+)", None),
             "int":       (r"An integer:  (\d+)", int),
-            "float":     (r"A float:     (\d+(?:\.\d*)?)", float),
+            "float":     (r"A float:     ([+-]?(?:0|[1-9]\d*)(?:\.\d*)?(?:[eE][+\-]?\d+)?)", float),
             "duration":  (r"A duration:  ([0-9\:]+)", duration),
             "timestamp": (r"A timestamp: ([0-9\:\- ]+)", timestamp),
         })
@@ -129,7 +129,7 @@ def parse_logs(path, patterns, repeat=False, path_transform=None):
             patterns={
                 "string":    (r"A string:    (.+)", None),
                 "int":       (r"An integer:  (\d+)", int),
-                "float":     (r"A float:     (\d+(?:\.\d*)?)", float),
+                "float":     (r"A float:     ([+-]?(?:0|[1-9]\d*)(?:\.\d*)?(?:[eE][+\-]?\d+)?)", float),
                 "duration":  (r"A duration:  ([0-9\:]+)", duration),
                 "timestamp": (r"A timestamp: ([0-9\:\- ]+)", timestamp),
             },

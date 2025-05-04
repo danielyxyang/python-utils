@@ -43,9 +43,10 @@ class TorchTimeProfiler(torch.profiler.profile):
 class TorchMemoryProfiler():
     """Class for profiling GPU memory usage by PyTorch."""
 
-    def __init__(self, reset_peak_stats=False, record_mem_history=False):
+    def __init__(self, reset_peak_stats=False, record_mem_history=False, autosave=False):
         self.reset_peak_stats = reset_peak_stats
         self.record_mem_history = record_mem_history
+        self.autosave = autosave
 
     def __enter__(self):
         self.start()
@@ -53,6 +54,11 @@ class TorchMemoryProfiler():
 
     def __exit__(self, *exc):
         self.stop()
+        if self.autosave:
+            if isinstance(self.autosave, bool):
+                self.save()
+            else:
+                self.save(path=self.autosave)
 
     def start(self):
         gc.collect()
@@ -83,9 +89,10 @@ class TorchMemoryProfiler():
         if torch.cuda.is_available():
             if hasattr(torch.cuda.memory, "_dump_snapshot"):
                 # start recording memory history
+                logger.info(f"Start recording torch memory history.")
                 torch.cuda.memory._record_memory_history()
             else:
-                logger.warning("Recording memory history requires torch >= 2.1.")
+                logger.warning("Recording torch memory history requires torch >= 2.1.")
 
     @staticmethod
     def save_memory_history(path="memory_history", snapshot=None):
@@ -101,5 +108,6 @@ class TorchMemoryProfiler():
                     pickle.dump(snapshot, file)
                 with open(f"{path}.html", "w") as file:
                     file.write(trace_plot(snapshot))
+                logger.info(f"Torch memory history saved to {path}.html.")
             else:
-                logger.warning("Saving memory history requires torch >= 2.1.")
+                logger.warning("Saving torch memory history requires torch >= 2.1.")

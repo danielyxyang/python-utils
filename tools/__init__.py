@@ -7,5 +7,6 @@ from .misc import (
     flatten_dict,
     to_dict,
     update_dict,
+    use_cache,
 )
 from .profiler import TimeProfiler, Timer

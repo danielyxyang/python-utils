@@ -1,7 +1,5 @@
-from pathlib import Path
 import json
 import logging
-import pickle
 import types
 from collections import UserDict
 from collections.abc import Mapping, MutableMapping
@@ -99,36 +97,3 @@ def build_json_encoder(encoders=[]):
                 return encoder(obj)
         return json.JSONEncoder().default(obj)
     return encoder
-
-
-def use_cache(f, path, refresh=False, verbose=True):
-    path = Path(path)
-
-    if not path.is_file() or refresh:
-        # evaluate function
-        output = f()
-        # save to disk
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if path.suffix == ".npy":
-            np.save(path, output)
-        elif path.suffix == ".npz":
-            np.savez_compressed(path, **output)
-        elif path.suffix == ".pkl":
-            with open(path, "wb") as f:
-                pickle.dump(output, f, protocol=pickle.HIGHEST_PROTOCOL)
-        else:
-            raise ValueError(f"Unknown file format \"{path.suffix}\".")
-        if verbose:
-            logger.info(f"Saved \"{path}\" to cache.")
-    else:
-        # load from disk
-        if path.suffix in [".npy", ".npz"]:
-            output = np.load(path)
-        elif path.suffix == ".pkl":
-            with open(path, "rb") as f:
-                output = pickle.load(f)
-        else:
-            raise ValueError(f"Unknown file format \"{path.suffix}\".")
-        if verbose:
-            logger.info(f"Loaded \"{path}\" from cache.")
-    return output

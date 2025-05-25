@@ -258,7 +258,7 @@ class Plotter():
         # parameters for save
         save_dir=None, save_format=None, save_always=None,
     ):
-        """Configure default behavior of Plotter.
+        r"""Configure default behavior of Plotter.
 
         The default style of the plots can be configured with Matplotlib's
         rcParams and style sheets. The default rcParams can be found here [1]
@@ -268,7 +268,7 @@ class Plotter():
             basewidth (float, optional): The basewidth of the area in which the
                 plots are used in inches. This can be the width of the output
                 area or the textwidth of your LaTeX document, which can be
-                obtained with "\the\textwidth" divided by 72.27 [3]. Defaults to
+                obtained with `\the\textwidth` divided by 72.27 [3]. Defaults to
                 None.
             style (str, dict, Path or list, optional): The style specification
                 for Matplotlib. Possible specifications are "original",
@@ -277,7 +277,9 @@ class Plotter():
             fontsize (float, str or dict, optional): The default fontsize. A
                 scalar defines the font size for all text and a dict defines the
                 font sizes according to _FONTSIZE_KEYS. A default font size can
-                be specified in the dict under "default". Defaults to None.
+                be specified in the dict under "default". The current font size
+                of your LaTeX document can be obtained with `\makeatletter
+                \f@size \makeatother`. Defaults to None.
             latex (bool, optional): Flag whether the plots should be rendered
                 with LaTeX or not. Defaults to None.
             latex_preamble (str, optional): The LaTeX preamble used to render

@@ -652,16 +652,23 @@ class Plotter():
                 height=figsize[1] * figsize_unit,
             )
         elif figwidth is not None:
+            axratio_default = (np.sqrt(5.0) - 1.0) / 2.0  # golden mean
+            if axratio is None:
+                axratio = [axratio_default] * len(plots_filtered)
+            elif not isinstance(axratio, list):
+                axratio = [axratio] * len(plots_filtered)
+            else:
+                axratio = [r if r is not None else axratio_default for r in axratio]
             figsize_spec = dict(
                 spec="width_ratio",
                 width=figwidth * figsize_unit,
-                ratio=axratio if axratio is not None else (np.sqrt(5.0) - 1.0) / 2.0, # golden mean
+                ratio=axratio,
             )
         else:
             figsize_spec = dict(spec=None)
 
         # set figure size, axis properties and layout
-        for fig, _ in plots_filtered:
+        for i, (fig, _) in enumerate(plots_filtered):
             # set figure size
             if figsize_spec["spec"] == "width_height":
                 # set figure size based on width and height
@@ -669,7 +676,7 @@ class Plotter():
             elif figsize_spec["spec"] == "width_ratio":
                 # set figure size based on width and axes ratio
                 for axis in fig.axes:
-                    axis.set_box_aspect(figsize_spec["ratio"])
+                    axis.set_box_aspect(figsize_spec["ratio"][i])
                 fig.set_figwidth(figsize_spec["width"])
                 _set_figheight_auto(fig)
 

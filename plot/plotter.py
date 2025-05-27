@@ -801,6 +801,30 @@ class Plotter():
             else:
                 logger.warning(f"save_format \"{save_format}\" unknown.")
 
+    # GROUPING FUNCTIONS
+
+    class PlotGroup:
+        def __init__(self):
+            self.plots = []
+
+        def add_plot(self, fig, name=None):
+            """Add a plot to the group."""
+            self.plots.append((fig, name) if name is not None else fig)
+
+        def rearrange(self, indices):
+            """Rearrange plots in the group according to the given indices."""
+            self.plots = [self.plots[i] for i in indices]
+
+    @staticmethod
+    @contextlib.contextmanager
+    def group(**kwargs):
+        """Group plots to be finished together."""
+        try:
+            plot_group = Plotter.PlotGroup()
+            yield plot_group
+        finally:
+            Plotter.finish(plot_group.plots, **kwargs)
+
     # UTILITY FUNCTIONS
 
     @staticmethod

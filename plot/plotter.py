@@ -208,10 +208,20 @@ class Plotter():
         "legend": "legend.fontsize",
     }
 
+    # mapping for CSS patches
+    _CSS_PATCHES = {
+        # CSS patch to show toolbar of interactive plots in Colab
+        "toolbar_in_colab": ".jupyter-matplotlib-figure { position: relative; }",
+        # CSS patch to hide scrollbars when not needed
+        "overflow_auto": ".display { overflow: auto !important; }",
+        # CSS patch to use gray background for widgets to check padding of plots
+        "gray_background": ".cell-output-ipywidget-background { background: lightgray !important; }\n ",
+    }
+
     # SETUP FUNCTIONS
 
     @staticmethod
-    def setup(interactive=None, is_colab=None):
+    def setup(interactive=None, is_colab=None, css_patches=True):
         """Setup environment for Plotter.
 
         Args:
@@ -221,6 +231,9 @@ class Plotter():
             is_colab (bool, optional): Flag whether the Plotter is used in
                 Google Colab or not. This is required for proper functioning of
                 interactive plots in Colab. Defaults to None.
+            css_patches (bool or list, optional): Flag whether to display
+                default CSS patches or a list of names of CSS patches to be
+                displayed. Defaults to True.
         """
         if interactive is not None: Plotter.interactive = interactive
         if is_colab is not None:    Plotter.is_colab = is_colab
@@ -244,6 +257,14 @@ class Plotter():
                     output,
                 )
                 output.enable_custom_widget_manager()
+
+        # display CSS patches
+        if isinstance(css_patches, bool):
+            if css_patches:
+                css_patches = ["toolbar_in_colab", "overflow_auto"]
+            else:
+                css_patches = []
+        Plotter.display_css_patches(css_patches)
 
         # prevent figures to be displayed without calling plt.show() or display()
         plt.ioff()
@@ -751,7 +772,6 @@ class Plotter():
                     ))
                 grid[i // grid_ncols, i % grid_ncols] = out
             # display grid of figures
-            Plotter.display_html_hack()
             display(grid)
 
         # save figures
@@ -835,17 +855,14 @@ class Plotter():
     # UTILITY FUNCTIONS
 
     @staticmethod
-    def display_html_hack():
-        """Display CSS hack to show toolbar of interactive plots in Colab."""
-        if Plotter.interactive and Plotter.is_colab:
-            html_hack = widgets.HTML("<style> .jupyter-matplotlib-figure { position: relative; } </style>")
-            display(html_hack)
+    def display_css_patches(patches):
+        """Display CSS patches."""
+        Plotter.display_css("\n".join(Plotter._CSS_PATCHES[patch] for patch in patches), message="CSS style patched.\n")
 
     @staticmethod
-    def display_css(css):
+    def display_css(css, message=""):
         """Display CSS for more control on ipywidgets."""
-        html_hack = widgets.HTML(f"<style> {css} </style>")
-        display(html_hack)
+        display(widgets.HTML(f"{message}<style> {css} </style>"))
 
     @staticmethod
     def print_lim(fig_index, prec=2):

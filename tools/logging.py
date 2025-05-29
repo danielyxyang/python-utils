@@ -41,7 +41,7 @@ def logging_disabled(level=logging.CRITICAL):
         logging.disable(prev_root_level)
 
 def parse_log(path, patterns, transform={}, repeat=False):
-    """Parse log files based on the given list of patterns.
+    r"""Parse log files based on the given list of patterns.
 
     Examples:
         Parsing basic log file
@@ -119,7 +119,7 @@ def parse_log(path, patterns, transform={}, repeat=False):
     return matches if repeat else matches[0]
 
 def parse_logs(path, patterns, repeat=False, path_transform=None):
-    """Parse multiple log files based on the given list of patterns.
+    r"""Parse multiple log files based on the given list of patterns.
 
     Examples:
         Parsing and aggregating multiple log files

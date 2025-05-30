@@ -680,9 +680,14 @@ class Plotter():
                 axratio = [axratio] * len(plots_filtered)
             else:
                 axratio = [r if r is not None else axratio_default for r in axratio]
+
+            if not isinstance(figwidth, list):
+                figwidth = [figwidth * figsize_unit] * len(plots_filtered)
+            else:
+                figwidth = [w * figsize_unit for w in figwidth]
             figsize_spec = dict(
                 spec="width_ratio",
-                width=figwidth * figsize_unit,
+                width=figwidth,
                 ratio=axratio,
             )
         else:
@@ -693,12 +698,12 @@ class Plotter():
             # set figure size
             if figsize_spec["spec"] == "width_height":
                 # set figure size based on width and height
-                fig.set_size_inches(figsize_spec["width"], figsize_spec["height"])
+                fig.set_size_inches(figsize_spec["width"][i], figsize_spec["height"])
             elif figsize_spec["spec"] == "width_ratio":
                 # set figure size based on width and axes ratio
                 for axis in fig.axes:
                     axis.set_box_aspect(figsize_spec["ratio"][i])
-                fig.set_figwidth(figsize_spec["width"])
+                fig.set_figwidth(figsize_spec["width"][i])
                 _set_figheight_auto(fig)
 
             # set properties of axes
@@ -748,7 +753,7 @@ class Plotter():
         if show or Plotter.save_always:
             # create grid of figures
             if figsize_spec["spec"] is not None:
-                grid_width = figsize_spec["width"]
+                grid_width = max(figsize_spec["width"])
             else:
                 grid_width = np.max([fig.get_figwidth() for fig, _ in plots_filtered])
             grid = widgets.GridspecLayout(

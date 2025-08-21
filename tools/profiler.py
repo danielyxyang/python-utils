@@ -6,19 +6,70 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-class Timer():
+class Timer:
     """Class for measuring execution time of one code section repeatedly."""
 
     def __init__(self):
         self.times = []
 
+    # Basic methods for measuring time
+
+    def is_started(self):
+        """Check if timer has been started."""
+        return hasattr(self, "_time_start")
+
+    def is_running(self):
+        """Check if timer is running."""
+        return self.is_started() and not hasattr(self, "_time_paused")
+
+    def is_paused(self):
+        """Check if timer is paused."""
+        return self.is_started() and hasattr(self, "_time_paused")
+
+    def start(self):
+        """Start timer."""
+        if self.is_started():
+            raise RuntimeError("Timer has already been started.")
+
+        self._time_start = time.perf_counter()
+
+    def stop(self):
+        """Stop timer and save measured time."""
+        if not self.is_started():
+            raise RuntimeError("Timer has not been started yet.")
+
+        self.times.append(time.perf_counter() - self._time_start)
+        del self._time_start
+
+    def pause(self):
+        """Pause timer and save current time."""
+        if self.is_paused():
+            raise RuntimeError("Timer is already paused.")
+
+        self._time_paused = time.perf_counter()
+
+    def resume(self):
+        """Resume timer from the last paused time."""
+        if self.is_running():
+            raise RuntimeError("Timer is already running.")
+
+        self._time_start += time.perf_counter() - self._time_paused
+        del self._time_paused
+
+    def reset(self):
+        """Reset timer and clear all measured times."""
+        self.times.clear()
+
+    # Methods for context manager
+
     def __enter__(self):
-        self.start = time.perf_counter()
+        self.start()
         return self
 
     def __exit__(self, *exc):
-        self.times.append(time.perf_counter() - self.start)
-        del self.start
+        self.stop()
+
+    # Properties for accessing time statistics
 
     @property
     def num_times(self):
@@ -40,134 +91,96 @@ class Timer():
         """Sum of measured times."""
         return np.sum(self.times)
 
+    def __str__(self):
+        if self.num_times == 0:
+            return "-"
+        if self.num_times == 1:
+            return f"{self.mean:.4f}s"
+        else:
+            return f"{self.mean:.4f}s ± {self.std:.4f}s ({self.num_times} times), total {self.total:.4f}s"
 
-class TimeProfiler():
-    """Class for profiling execution times of different code sections."""
+
+class TimeProfiler:
+    """Class for profiling execution times of multiple code sections."""
 
     def __init__(self):
-        # simple profiling
-        self._start = None
-        self._end = None
-        # named profiling
-        self._records = {}
-        self.__names_context = [] # stack storing names of disjoint records for nested profiling contextmanagers
+        self.timers = {}
+        self.__names_context = []  # stack storing names of disjoint nested timers
 
-    def start(self, name=None):
-        """Start timer of profiler."""
-        if name is None:
-            # simple profiling
-            self._start = time.perf_counter()
-            self._end = None
-        else:
-            # named profiling
-            if name not in self._records:
-                self._records[name] = {
-                    "start": None,
-                    "end": None,
-                    "time": 0.0,
-                    "info": None
-                }
-            self._records[name]["start"] = time.perf_counter()
-            self._records[name]["end"] = None
+    # Basic methods for profiling
 
-    def stop(self, name=None):
-        """Stop timer of profiler and save time under given name cumulatively."""
-        if name is None:
-            # simple profiling
-            if self._start is None:
-                logger.warning("Profiler has not been started yet.")
-                return
-            self._end = time.perf_counter()
-        else:
-            # named profiling
-            if name not in self._records:
-                logger.warning(f"Profiler has not been started for \"{name}\" yet.")
-                return
-            self._records[name]["end"] = time.perf_counter()
-            self._records[name]["time"] += self.time(name)
+    def start(self, name):
+        """Start timer under given name."""
+        if name not in self.timers:
+            self.timers[name] = Timer()
+        self.timers[name].start()
 
-    def time(self, name=None):
-        """Return last stopped time."""
-        if name is None:
-            # simple profiling
-            if self._start is None or self._end is None:
-                logger.warning(f"Profiler has not recorded a time yet.")
-                return
-            return self._end - self._start
-        else:
-            # named profiling
-            if name not in self._records or self._records[name]["start"] is None or self._records[name]["end"] is None:
-                logger.warning(f"Profiler has not recorded a time for \"{name}\" yet")
-                return
-            return self._records[name]["end"] - self._records[name]["start"]
+    def stop(self, name):
+        """Stop timer under given name."""
+        if name not in self.timers:
+            raise RuntimeError(f"Timer \"{name}\" has not been started yet.")
+        self.timers[name].stop()
 
-    def set_info(self, name, info):
-        """Set profiling information for the stopped time under given name."""
-        self._records[name]["info"] = info
+    def pause(self, name):
+        """Pause timer under given name."""
+        if name not in self.timers:
+            raise RuntimeError(f"Timer \"{name}\" has not been started yet.")
+        self.timers[name].pause()
 
-    def merge(self, profiler):
-        """Merge records with another profiler."""
-        self._records.update(profiler._records)
+    def resume(self, name):
+        """Resume timer under given name."""
+        if name not in self.timers:
+            raise RuntimeError(f"Timer \"{name}\" has not been started yet.")
+        self.timers[name].resume()
 
     def reset(self):
-        """Reset profiler and delete all records."""
-        self._start = None
-        self._end = None
-        self._records.clear()
+        """Reset all timers."""
+        self.timers.clear()
 
-    def print(self, names=None):
-        """Print saved times and profiling information for the given list of names."""
-        if names is None:
-            names = self._records.keys()
-
-        msg = "Profiling"
-        max_length = np.max([len(name) for name in names])
-        total = 0
-        for name in names:
-            time = self._records[name]["time"] if name in self._records else None
-            info = self._records[name]["info"] if name in self._records else None
-            total += time if time is not None else 0
-            msg += "\n  {:{}} {}{}".format(
-                "{}:".format(name), max_length + 1,
-                "{:4.2f}s".format(time) if time is not None else "{:4} ".format("-"),
-                " ({})".format(info) if info is not None else "",
-            )
-        msg += "\n  {:{}} {}".format("Total:", max_length + 1, "{:4.2f}s".format(total))
-        logger.info(msg)
+    # Methods for context manager
 
     @contextlib.contextmanager
-    def __call__(self, name=None, disjoint=True):
+    def __call__(self, name, disjoint=False):
         """Create context manager for profiling.
 
         Args:
             name (str): Name of the profiling session.
-            disjoint (bool): Flag whether recorded time should be disjoint from
-                other times recorded with context manager. Defaults to True."""
-        if name is None:
-            # simple profiling
-            self.start()
-            try:
-                yield self
-            finally:
-                self.stop()
-        else:
-            # named profiling
-            # stop previous session
+            disjoint (bool, optional): Flag whether this measured time should be
+                disjoint from nested times measured with this context manager.
+                Defaults to False."""
+        # pause parent session
+        if len(self.__names_context) > 0:
+            name_prev = self.__names_context[-1]
+            self.pause(name_prev)
+        # start this session
+        if disjoint:
+            self.__names_context.append(name)
+        self.start(name)
+        try:
+            yield self
+        finally:
+            # stop this session
+            self.stop(name)
+            if disjoint:
+                self.__names_context.pop()
+            # resume parent session
             if len(self.__names_context) > 0:
                 name_prev = self.__names_context[-1]
-                self.stop(name=name_prev)
-            # start this session
-            if disjoint:
-                self.__names_context.append(name)
-            self.start(name=name)
-            try:
-                yield self
-            finally:
-                # stop this session
-                self.stop(name=name)
-                if disjoint:
-                    self.__names_context.pop()
-                # start previous session
-                if len(self.__names_context) > 0:
-                    name_prev = self.__names_context[-1]
-                    self.start(name=name_prev)
+                self.resume(name_prev)
+
+    # Methods for accessing profiling information
+
+    def summary(self, names="all"):
+        """Print saved times and profiling information for the given list of names."""
+        if names == "all":
+            names = self.timers.keys()
+
+        offset = np.max([len(name) for name in names]) + 2
+        summary = "TimeProfiler"
+        for name in names:
+            summary += f"\n  {name + ':':{offset + 1}}{self.timers.get(name, '-')}"
+
+        return summary
+
+    def __str__(self):
+        return self.summary()

@@ -4,6 +4,12 @@ import time
 
 import numpy as np
 
+try:
+    import torch # type: ignore[import]
+    _IMPORTED_TORCH = True
+except ImportError:
+    _IMPORTED_TORCH = False
+
 logger = logging.getLogger(__name__)
 
 class Timer:
@@ -26,19 +32,26 @@ class Timer:
         """Check if timer is paused."""
         return self.is_started() and hasattr(self, "_time_paused")
 
+    @property
+    def current_time(self):
+        """Current synchronized time."""
+        if _IMPORTED_TORCH and torch.cuda.is_available():
+            torch.cuda.synchronize()
+        return time.perf_counter()
+
     def start(self):
         """Start timer."""
         if self.is_started():
             raise RuntimeError("Timer has already been started.")
 
-        self._time_start = time.perf_counter()
+        self._time_start = self.current_time
 
     def stop(self):
         """Stop timer and save measured time."""
         if not self.is_started():
             raise RuntimeError("Timer has not been started yet.")
 
-        self.times.append(time.perf_counter() - self._time_start)
+        self.times.append(self.current_time - self._time_start)
         del self._time_start
 
     def pause(self):
@@ -46,14 +59,14 @@ class Timer:
         if self.is_paused():
             raise RuntimeError("Timer is already paused.")
 
-        self._time_paused = time.perf_counter()
+        self._time_paused = self.current_time
 
     def resume(self):
         """Resume timer from the last paused time."""
         if self.is_running():
             raise RuntimeError("Timer is already running.")
 
-        self._time_start += time.perf_counter() - self._time_paused
+        self._time_start += self.current_time - self._time_paused
         del self._time_paused
 
     def reset(self):

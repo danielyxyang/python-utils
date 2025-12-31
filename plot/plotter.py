@@ -667,10 +667,17 @@ class Plotter():
 
         # set figure size specification
         if figsize is not None:
+            if not isinstance(figsize, list):
+                figwidth = [figsize[0] * figsize_unit] * len(plots_filtered)
+                figheight = [figsize[1] * figsize_unit] * len(plots_filtered)
+            else:
+                figwidth = [s[0] * figsize_unit for s in figsize]
+                figheight = [s[1] * figsize_unit for s in figsize]
+
             figsize_spec = dict(
                 spec="width_height",
-                width=figsize[0] * figsize_unit,
-                height=figsize[1] * figsize_unit,
+                width=figwidth,
+                height=figheight,
             )
         elif figwidth is not None:
             axratio_default = (np.sqrt(5.0) - 1.0) / 2.0  # golden mean
@@ -685,6 +692,7 @@ class Plotter():
                 figwidth = [figwidth * figsize_unit] * len(plots_filtered)
             else:
                 figwidth = [w * figsize_unit for w in figwidth]
+
             figsize_spec = dict(
                 spec="width_ratio",
                 width=figwidth,
@@ -698,7 +706,7 @@ class Plotter():
             # set figure size
             if figsize_spec["spec"] == "width_height":
                 # set figure size based on width and height
-                fig.set_size_inches(figsize_spec["width"][i], figsize_spec["height"])
+                fig.set_size_inches(figsize_spec["width"][i], figsize_spec["height"][i])
             elif figsize_spec["spec"] == "width_ratio":
                 # set figure size based on width and axes ratio
                 for axis in fig.axes:

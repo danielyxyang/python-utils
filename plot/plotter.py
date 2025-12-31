@@ -39,7 +39,7 @@ def _get_figheight_tight(fig):
     return fig.get_tightbbox().height + 2 * h_pad_inch
 
 
-def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=False):
+def _set_figheight_auto(fig, offset=0.0, prec=0.01, prec_mode="abs", max_iter=50, verbose=False):
     """Automatically sets figure height tightest possible while adhering to padding.
 
     This function retrieves the desired padding from the figure's layout engine
@@ -65,7 +65,7 @@ def _set_figheight_auto(fig, prec=0.01, prec_mode="abs", max_iter=10, verbose=Fa
     # iteratively update figure height until layout engine converges
     for _ in range(max_iter):
         # compute new figure height
-        new_height = _get_figheight_tight(fig)
+        new_height = _get_figheight_tight(fig) + offset
         if verbose:
             logger.info(f"{new_height:5.2f} {new_height - fig.get_figheight():6.3f} {new_height / fig.get_figheight() - 1:6.1%}")
         # check early stopping
@@ -113,7 +113,7 @@ def _set_padding(fig, left=None, bottom=None, right=None, top=None):
     )
 
 
-def _execute_tight_layout_auto(fig, prec=0.01, max_iter=10, verbose=False):
+def _execute_tight_layout_auto(fig, prec=0.01, max_iter=50, verbose=False):
     """Iteratively executes tight layout engine until convergence.
 
     The tight layout engine seems to rely on the current layout of the figure.
@@ -581,7 +581,8 @@ class Plotter():
         plots,
         # parameters for single figure
         figsize=None,
-        figwidth=1,
+        figwidth=1.0,
+        figheight_offset=0.0,
         axratio=None,
         figsize_unit="base",
         set={},
@@ -693,10 +694,16 @@ class Plotter():
             else:
                 figwidth = [w * figsize_unit for w in figwidth]
 
+            if not isinstance(figheight_offset, list):
+                figheight_offset = [figheight_offset * figsize_unit] * len(plots_filtered)
+            else:
+                figheight_offset = [o * figsize_unit for o in figheight_offset]
+
             figsize_spec = dict(
                 spec="width_ratio",
                 width=figwidth,
                 ratio=axratio,
+                height_offset=figheight_offset,
             )
         else:
             figsize_spec = dict(spec=None)
@@ -712,7 +719,7 @@ class Plotter():
                 for axis in fig.axes:
                     axis.set_box_aspect(figsize_spec["ratio"][i])
                 fig.set_figwidth(figsize_spec["width"][i])
-                _set_figheight_auto(fig)
+                _set_figheight_auto(fig, offset=figsize_spec["height_offset"][i])
 
             # set properties of axes
             Plotter.set(fig.axes, **set)

@@ -15,8 +15,9 @@ logger = logging.getLogger(__name__)
 class Timer:
     """Class for measuring execution time of one code section repeatedly."""
 
-    def __init__(self):
+    def __init__(self, clock=None):
         self.times = []
+        self.clock = clock or time.perf_counter
 
     # Basic methods for measuring time
 
@@ -36,7 +37,7 @@ class Timer:
         """Current synchronized time."""
         if _IMPORTED_TORCH and torch.cuda.is_available():
             torch.cuda.synchronize()
-        return time.perf_counter()
+        return self.clock()
 
     def start(self):
         """Start timer."""
@@ -115,8 +116,9 @@ class Timer:
 class TimeProfiler:
     """Class for profiling execution times of multiple code sections."""
 
-    def __init__(self):
+    def __init__(self, clock=None):
         self.timers = {}
+        self.clock = clock
         self.__names_context = []  # stack storing names of disjoint nested timers
 
     # Basic methods for profiling
@@ -124,7 +126,7 @@ class TimeProfiler:
     def start(self, name):
         """Start timer under given name."""
         if name not in self.timers:
-            self.timers[name] = Timer()
+            self.timers[name] = Timer(clock=self.clock)
         self.timers[name].start()
 
     def stop(self, name):

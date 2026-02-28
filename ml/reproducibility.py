@@ -9,6 +9,7 @@ import numpy as np
 try:
     import torch
     import torch.nn as nn
+
     _IMPORTED_TORCH = True
 except ImportError:
     _IMPORTED_TORCH = False
@@ -16,7 +17,25 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-def seed_everything(seed=None, deterministic=False, verbose=True):
+
+@contextlib.contextmanager
+def local_seed(seed):
+    """Context manager for setting a local random seed within the context."""
+    # store random states
+    random_state = random.getstate()
+    np_state = np.random.get_state()
+    # set local random seed
+    random.seed(seed)
+    np.random.seed(seed)
+    try:
+        yield
+    finally:
+        # restore random states
+        random.setstate(random_state)
+        np.random.set_state(np_state)
+
+
+def ensure_reproducibility(seed=None, deterministic=False):
     """Set seeds and ensures usage of deterministic algorithms.
 
     Args:
@@ -24,27 +43,26 @@ def seed_everything(seed=None, deterministic=False, verbose=True):
             to None.
         deterministic (bool, optional): Flag whether algorithms should be as
             deterministic as possible. Defaults to False.
-        verbose (bool, optional): Flag whether to be verbose. Defaults to True.
+
+    References:
+        [1] https://pytorch.org/docs/stable/notes/randomness.html
     """
-    # https://pytorch.org/docs/stable/notes/randomness.html
     # seed random number generators
     if seed is not None:
-        if verbose:
-            logger.info(f"Setting seeds to {seed}.")
-
         random.seed(seed)
         np.random.seed(seed)
         if _IMPORTED_TORCH:
             torch.manual_seed(seed)
+        logger.info(f"Set seeds: {seed}")
+
     # use deterministic algorithms
     if deterministic:
-        if verbose:
-            logger.info(f"Using deterministic algorithms.")
-
         if _IMPORTED_TORCH:
             torch.use_deterministic_algorithms(True, warn_only=True)
             torch.backends.cudnn.benchmark = False
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+        logger.info("Enabled deterministic algorithms.")
+
 
 def _seed_dataloader_worker(worker_id):
     """Set seeds in dataloader workers."""
@@ -54,6 +72,7 @@ def _seed_dataloader_worker(worker_id):
         random.seed(worker_seed)
         np.random.seed(worker_seed)
         torch.manual_seed(worker_seed)
+
 
 def seed_dataloader(seed):
     """Return arguments to set the seed in dataloader workers.
@@ -79,6 +98,7 @@ def seed_dataloader(seed):
 
 class OutputChecker:
     """Class for checking reproducibility of function outputs."""
+
     COLLECT = "COLLECT"
     VERIFY = "VERIFY"
 
@@ -98,7 +118,7 @@ class OutputChecker:
             # start collection of outputs
             logger.info("Collecting outputs...")
             self.phase = OutputChecker.COLLECT
-            seed_everything(0)
+            ensure_reproducibility(0)
             yield
         finally:
             self.phase = None
@@ -122,7 +142,7 @@ class OutputChecker:
             # start verification of outputs
             logger.info("Verifying outputs...")
             self.phase = OutputChecker.VERIFY
-            seed_everything(0)
+            ensure_reproducibility(0)
             yield
         finally:
             self.phase = None
@@ -191,7 +211,9 @@ class OutputChecker:
             if out_prev.keys() == out.keys():
                 return {key: OutputChecker._update_tensors(out_prev[key], out[key]) for key in out_prev}
             else:
-                logger.warning(f"Output of type {type(out_prev)} with different set of keys {list(out_prev.keys())} and {list(out.keys())}.")
+                logger.warning(
+                    f"Output of type {type(out_prev)} with different set of keys {list(out_prev.keys())} and {list(out.keys())}."
+                )
                 return out_prev
         else:
             return out_prev
@@ -220,10 +242,13 @@ class OutputChecker:
                 means, maxs, sums = zip(*[OutputChecker.diff(out1[key], out2[key]) for key in out1])
                 return np.mean(means), np.max(maxs), np.sum(sums)
             else:
-                logger.warning(f"Output of type {type(out1)} with different set of keys {list(out1.keys())} and {list(out2.keys())}.")
+                logger.warning(
+                    f"Output of type {type(out1)} with different set of keys {list(out1.keys())} and {list(out2.keys())}."
+                )
                 return 0, 0, 0
         else:
             logger.warning(f"Output type {type(out1)} not supported.")
             return 0, 0, 0
+
 
 OUTPUT_CHECKER = OutputChecker()

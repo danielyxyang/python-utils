@@ -581,13 +581,13 @@ class Plotter():
         plots,
         # parameters for single figure
         figsize=None,
-        figwidth=1.0,
+        figwidth=None,
         figheight_offset=0.0,
         axratio=None,
         figsize_unit="base",
         set={},
         # parameters for multiple figures
-        grid_ncols=4,
+        grid_ncols=1,
         consistent_size=False,
         # parameters for showing and saving figures
         show=True,
@@ -619,7 +619,7 @@ class Plotter():
                 with width and height given in figsize_unit. Defaults to None.
             figwidth (float, optional): The width of the figure given in
                 figsize_unit. This parameter is ignored if figsize is given.
-                Defaults to 1.
+                Defaults to None.
             axratio (float, optional): The height/width ratio of the axes, not
                 of the figure. This parameter is ignored if figsize is given.
                 Defaults to None (golden mean ratio).
@@ -628,7 +628,7 @@ class Plotter():
                 relative to Plotter.basewidth ("base"). Defaults to "base".
             grid_ncols (int, optional): Number of columns of the grid in which
                 the list of plots are displayed. This grid also determines the
-                plots for which a consistent size is required. Defaults to 4.
+                plots for which a consistent size is required. Defaults to 1.
             consistent_size (bool, optional): Flag whether to consistently size
                 the Axes across different figures by unifying their side
                 paddings. Defaults to False.

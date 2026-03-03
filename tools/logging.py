@@ -40,7 +40,7 @@ def logging_disabled(level=logging.CRITICAL):
     finally:
         logging.disable(prev_root_level)
 
-def parse_log(path, patterns, transform={}, repeat=False):
+def parse_log(path, patterns, repeat=False):
     r"""Parse log files based on the given list of patterns.
 
     Examples:

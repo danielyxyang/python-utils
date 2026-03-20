@@ -9,6 +9,7 @@ import numpy as np
 from IPython import get_ipython
 from IPython.display import display
 from matplotlib.collections import PatchCollection
+from matplotlib.transforms import Bbox
 
 from .plot_tools import FilterTicksLocator
 
@@ -897,6 +898,26 @@ class Plotter():
         fig_to.gca().set_ylim(fig_from.gca().get_ylim())
         fig_to.canvas.draw()
         fig_to.canvas.flush_events()
+
+    @staticmethod
+    def draw_tightbbox(fig):
+        bbox_inches = fig.get_tightbbox()
+        bbox_px = Bbox.from_bounds(
+            bbox_inches.x0 * fig.dpi,
+            bbox_inches.y0 * fig.dpi,
+            bbox_inches.width * fig.dpi,
+            bbox_inches.height * fig.dpi,
+        )
+        rect = plt.Rectangle(
+            (bbox_px.x0, bbox_px.y0),
+            bbox_px.width,
+            bbox_px.height,
+            edgecolor="red",
+            facecolor="none",
+            linewidth=0.5,
+            clip_on=False,
+        )
+        fig.patches.append(rect)
 
 
 class DynamicPlotter(Plotter):

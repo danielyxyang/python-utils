@@ -39,7 +39,7 @@ def _get_figheight_tight(fig):
     return fig.get_tightbbox().height + 2 * h_pad_inch
 
 
-def _set_figheight_auto(fig, offset=0.0, prec=0.01, prec_mode="abs", max_iter=50, verbose=False):
+def _set_figheight_auto(fig, offset=0.0, rtol=0.0, atol=0.01, max_iter=50, verbose=False):
     """Automatically sets figure height tightest possible while adhering to padding.
 
     This function retrieves the desired padding from the figure's layout engine
@@ -69,10 +69,7 @@ def _set_figheight_auto(fig, offset=0.0, prec=0.01, prec_mode="abs", max_iter=50
         if verbose:
             logger.info(f"{new_height:5.2f} {new_height - fig.get_figheight():6.3f} {new_height / fig.get_figheight() - 1:6.1%}")
         # check early stopping
-        if (
-            (prec_mode == "abs" and np.abs(new_height - fig.get_figheight()) < prec)
-            or (prec_mode == "rel" and np.abs(new_height / fig.get_figheight() - 1) < prec)
-        ):
+        if np.isclose(new_height, fig.get_figheight(), rtol=rtol, atol=atol):
             if verbose:
                 logger.info(f"Early stopping with {fig.get_figheight()}.")
             break
@@ -113,7 +110,7 @@ def _set_padding(fig, left=None, bottom=None, right=None, top=None):
     )
 
 
-def _execute_tight_layout_auto(fig, prec=0.01, max_iter=50, verbose=False):
+def _execute_tight_layout_auto(fig, rtol=0.0, atol=0.01, max_iter=50, verbose=False):
     """Iteratively executes tight layout engine until convergence.
 
     The tight layout engine seems to rely on the current layout of the figure.
@@ -139,7 +136,7 @@ def _execute_tight_layout_auto(fig, prec=0.01, max_iter=50, verbose=False):
         if verbose:
             logger.info(f"{padding_new} {np.max(np.abs(padding - padding_new)):6.3f}")
         # check early stopping
-        if (np.abs(padding - padding_new) < prec).all():
+        if np.isclose(padding, padding_new, rtol=rtol, atol=atol).all():
             if verbose:
                 logger.info(f"Early stopping with {padding_new}.")
             break

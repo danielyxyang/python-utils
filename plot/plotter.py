@@ -860,6 +860,10 @@ class Plotter():
             """Rearrange plots in the group according to the given indices."""
             self.plots = [self.plots[i] for i in indices]
 
+        def rename(self, map_fn):
+            """Rename plots in the group according to the given mapping function."""
+            self.plots = [(plot[0], map_fn(plot[1])) if isinstance(plot, tuple) else plot for plot in self.plots]
+
     @staticmethod
     @contextlib.contextmanager
     def group(**kwargs):

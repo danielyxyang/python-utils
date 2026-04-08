@@ -251,9 +251,7 @@ class Plotter():
             # enable interactive plots on Colab
             # https://matplotlib.org/ipympl/installing.html#google-colab
             if Plotter.interactive and Plotter.is_colab:
-                from google.colab import (  # pyright: ignore[reportMissingImports]
-                    output,
-                )
+                from google.colab import output  # pyright: ignore[reportMissingImports]
                 output.enable_custom_widget_manager()
 
         # display CSS patches
@@ -589,6 +587,7 @@ class Plotter():
         consistent_size=False,
         # parameters for showing and saving figures
         show=True,
+        show_grid=False,
         save=False,
         save_format=None,
         save_kw={},
@@ -633,6 +632,8 @@ class Plotter():
             set (dict): Keyword arguments passed to `set`. Defaults to {}.
             show (bool, optional): Flag whether to display the plots. Defaults
                 to True.
+            show_grid (bool, optional): Flag whether to show grid in the plots.
+                Defaults to False.
             save (bool, optional): Flag whether to save the plots. Defaults to
                 False.
             save_format (str, optional): The format in which the plots should be
@@ -764,33 +765,43 @@ class Plotter():
 
         # show figures
         if show or Plotter.save_always:
-            # create grid of figures
-            if figsize_spec["spec"] is not None:
-                grid_width = max(figsize_spec["width"])
+            if show_grid:
+                # create grid of figures
+                if figsize_spec["spec"] is not None:
+                    grid_width = max(figsize_spec["width"])
+                else:
+                    grid_width = np.max([fig.get_figwidth() for fig, _ in plots_filtered])
+                grid = widgets.GridspecLayout(
+                    n_rows=grid_nrows,
+                    n_columns=grid_ncols,
+                    width=f"{(grid_width + 0.5) * grid_ncols}in",
+                )
+                for i, (fig, name) in enumerate(plots):
+                    if fig is None:
+                        continue
+                    out = widgets.Output(layout=dict(overflow="auto"))
+                    with out:
+                        if Plotter.interactive and not Plotter.save_always:
+                            display(fig.canvas)
+                        else:
+                            display(fig)
+                        display(widgets.Label(
+                            f"{fig.number:3}: {name}",
+                            layout=dict(overflow="auto"),
+                            style=dict(font_family="monospace", font_size="10pt"),
+                        ))
+                    grid[i // grid_ncols, i % grid_ncols] = out
+                # display grid of figures
+                display(grid)
             else:
-                grid_width = np.max([fig.get_figwidth() for fig, _ in plots_filtered])
-            grid = widgets.GridspecLayout(
-                n_rows=grid_nrows,
-                n_columns=grid_ncols,
-                width=f"{(grid_width + 0.5) * grid_ncols}in",
-            )
-            for i, (fig, name) in enumerate(plots):
-                if fig is None:
-                    continue
-                out = widgets.Output(layout=dict(overflow="auto"))
-                with out:
+                for fig, name in plots_filtered:
+                    if fig is None:
+                        continue
+                    print(f"{fig.number:3}: {name}")
                     if Plotter.interactive and not Plotter.save_always:
                         display(fig.canvas)
                     else:
                         display(fig)
-                    display(widgets.Label(
-                        f"{fig.number:3}: {name}",
-                        layout=dict(overflow="auto"),
-                        style=dict(font_family="monospace", font_size="10pt"),
-                    ))
-                grid[i // grid_ncols, i % grid_ncols] = out
-            # display grid of figures
-            display(grid)
 
         # save figures
         if save or Plotter.save_always:
